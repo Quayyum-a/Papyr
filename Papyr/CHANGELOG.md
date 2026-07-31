@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Implemented basic canvas drawing with perfect-freehand integration
 - Added responsive canvas that resizes with window
 - Implemented pointer event handling for mouse, touch, and pen input
+- Added Stroke data model (TypeScript interface for Stroke and StrokePoint)
 
 ### Changed
 - Updated package.json to use Next.js 14 and React 18

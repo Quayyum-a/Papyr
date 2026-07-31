@@ -1,9 +1,9 @@
-// src/types/stroke.test.ts
-import { describe, expect, test } from 'vitest';
+/// <reference types="vitest" />
+import { describe, expect, it } from 'vitest';
 import { Stroke, StrokePoint } from './stroke';
 
 describe('Stroke types', () => {
-  test('StrokePoint interface has required properties', () => {
+  it('StrokePoint interface has required properties', () => {
     const point: StrokePoint = {
       x: 100,
       y: 200,
@@ -14,7 +14,7 @@ describe('Stroke types', () => {
     expect(point).toHaveProperty('timestamp');
   });
 
-  test('Stroke interface has required properties', () => {
+  it('Stroke interface has required properties', () => {
     const stroke: Stroke = {
       id: '123e4567-e89b-12d3-a456-426614174000',
       cellId: '123e4567-e89b-12d3-a456-426614174001',
