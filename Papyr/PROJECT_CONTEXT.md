@@ -14,12 +14,11 @@ Drawing Engine MVP - Core canvas functionality with perfect-freehand integration
 - [x] Create project README.md
 - [x] Establish development environment
 - [x] Configure Supabase connection
+- [x] Implement basic canvas rendering with perfect-freehand integration
 
 ## Remaining Tasks
 
 ### Sprint 0 Tasks
-- [ ] Implement basic canvas rendering
-- [ ] Add perfect-freehand integration
 - [ ] Create stroke data model
 - [ ] Implement basic undo/redo functionality
 - [ ] Add pressure sensitivity support
@@ -121,7 +120,7 @@ Drawing Engine MVP - Core canvas functionality with perfect-freehand integration
    - Status: Design phase
 
 ## Next Task
-Implement basic canvas rendering with perfect-freehand integration
+Create stroke data model
 
 ## Current Branch
 main
