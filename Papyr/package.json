@@ -1,0 +1,35 @@
+{
+  "name": "papyr",
+  "version": "1.0.0",
+  "description": "Papyr is an offline-first handwritten digital ledger designed to replace physical notebooks for small businesses. It combines the natural simplicity of paper with the reliability and accessibility of digital storage.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "next": "^14.2.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.4.5",
+    "perfect-freehand": "^1.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4"
+  }
+}
