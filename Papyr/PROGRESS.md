@@ -12,7 +12,7 @@ Validate the drawing engine core technologies: Canvas API, perfect-freehand inte
 - [x] Supabase connection configured
 - [x] Basic canvas rendering with perfect-freehand implemented
 - [x] Stroke data model created
-- [ ] Undo/redo functionality implemented
+- [x] Undo/redo functionality implemented
 - [ ] Pressure sensitivity support added
 - [ ] Testing on low-end Android devices
 
@@ -29,11 +29,11 @@ Validate the drawing engine core technologies: Canvas API, perfect-freehand inte
 - Supabase integration
 - Canvas drawing with perfect-freehand
 - Stroke data model (TypeScript interface for Stroke and StrokePoint)
+- Undo/redo functionality (with stack and keyboard shortcuts)
 
 ### Next Steps
-1. Implement undo/redo stack
-2. Add pressure sensitivity handling
-3. Begin performance testing
+1. Add pressure sensitivity support
+2. Begin performance testing
 
 ### Blockers
 - None currently

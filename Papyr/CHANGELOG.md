@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Added responsive canvas that resizes with window
 - Implemented pointer event handling for mouse, touch, and pen input
 - Added Stroke data model (TypeScript interface for Stroke and StrokePoint)
+- Implemented undo/redo functionality with keyboard shortcuts (Ctrl+Z, Ctrl+Y) and UI buttons
 
 ### Changed
 - Updated package.json to use Next.js 14 and React 18

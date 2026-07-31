@@ -16,11 +16,11 @@ Drawing Engine MVP - Core canvas functionality with perfect-freehand integration
 - [x] Configure Supabase connection
 - [x] Implement basic canvas rendering with perfect-freehand integration
 - [x] Create stroke data model
+- [x] Implement basic undo/redo functionality
 
 ## Remaining Tasks
 
 ### Sprint 0 Tasks
-- [ ] Implement basic undo/redo functionality
 - [ ] Add pressure sensitivity support
 - [ ] Test on low-end Android devices
 
@@ -120,7 +120,7 @@ Drawing Engine MVP - Core canvas functionality with perfect-freehand integration
    - Status: Design phase
 
 ## Next Task
-Implement basic undo/redo functionality
+Add pressure sensitivity support
 
 ## Current Branch
 main
