@@ -76,6 +76,9 @@ export default function CanvasPage() {
       offscreenCtx.imageSmoothingEnabled = true;
 
       clearCanvas();
+
+      // Reset rendered stroke count so all strokes are redrawn after canvas resize
+      stateRef.current.lastRenderedStrokeCount = 0;
     };
 
     const clearCanvas = () => {
@@ -144,12 +147,16 @@ export default function CanvasPage() {
 
     const handleResize = () => setupCanvas();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'z') {
+      // Handle both Ctrl (Windows/Linux) and Cmd (macOS) for undo/redo
+      const isUndo = (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey;
+      const isRedo = (e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey));
+
+      if (isUndo) {
         e.preventDefault();
         undo();
         stateRef.current.lastRenderedStrokeCount = 0;
       }
-      if (e.ctrlKey && e.key === 'y') {
+      if (isRedo) {
         e.preventDefault();
         redo();
         stateRef.current.lastRenderedStrokeCount = 0;
