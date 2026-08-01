@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { getStroke } from 'perfect-freehand';
 import { useStrokeHistory } from '../hooks/useStrokeHistory';
 import { v4 as uuidv4 } from 'uuid';
@@ -141,9 +142,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col p-4">
-      <h1 className="text-3xl font-bold mb-4 text-gray-800">
-        Papyr - Handwritten Digital Ledger
-      </h1>
+      <div className="flex items-center gap-3 mb-6">
+        <Image
+          src="/favicon.png"
+          alt="Papyr Logo"
+          width={48}
+          height={48}
+          className="rounded"
+        />
+        <h1 className="text-3xl font-bold text-gray-800">
+          Papyr
+        </h1>
+      </div>
       <div
         className="relative flex-1 border-2 border-dashed border-gray-300 rounded-lg"
         onPointerDown={handlePointerDown}

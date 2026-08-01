@@ -5,8 +5,11 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Papyr',
-  description: 'Offline-first handwritten digital ledger',
+  title: 'Papyr - Handwritten Digital Ledger',
+  description: 'Offline-first handwritten digital ledger designed to replace physical notebooks',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({
