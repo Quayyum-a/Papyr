@@ -21,6 +21,13 @@ export class RenderLoop {
     this.callbacks.push(callback);
   }
 
+  removeCallback(callback: () => void) {
+    const index = this.callbacks.indexOf(callback);
+    if (index !== -1) {
+      this.callbacks.splice(index, 1);
+    }
+  }
+
   clearCallbacks() {
     this.callbacks = [];
   }

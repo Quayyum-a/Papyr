@@ -1,10 +1,10 @@
 /// <reference types="vitest" />
 import { describe, expect, it } from 'vitest';
-import { Stroke, StrokePoint } from './stroke';
+import { Stroke, Point } from './stroke';
 
 describe('Stroke types', () => {
-  it('StrokePoint interface has required properties', () => {
-    const point: StrokePoint = {
+  it('Point interface has required properties', () => {
+    const point: Point = {
       x: 100,
       y: 200,
       timestamp: Date.now(),
