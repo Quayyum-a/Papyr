@@ -86,11 +86,22 @@ export default function Home() {
     }
   };
 
+  const getCanvasCoords = (e: React.PointerEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDrawing(true);
+    const coords = getCanvasCoords(e);
     setPoints([{
-      x: e.clientX,
-      y: e.clientY,
+      x: coords.x,
+      y: coords.y,
       pressure: e.pressure,
       timestamp: e.timeStamp,
       tiltX: e.tiltX,
@@ -101,11 +112,12 @@ export default function Home() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDrawing) return;
+    const coords = getCanvasCoords(e);
     setPoints((prev) => [
       ...prev,
       {
-        x: e.clientX,
-        y: e.clientY,
+        x: coords.x,
+        y: coords.y,
         pressure: e.pressure,
         timestamp: e.timeStamp,
         tiltX: e.tiltX,
