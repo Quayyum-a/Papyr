@@ -10,8 +10,19 @@ import { PEN_CONFIGS } from '../lib/ink-engine/types';
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { strokes, createStroke, addStroke, undo, redo, canUndo, canRedo, setPenSize, currentPenSize } =
-    useInkEngine();
+  const {
+    strokes,
+    createStroke,
+    addStroke,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    setPenSize,
+    currentPenSize,
+    setPenColor,
+    currentColor,
+  } = useInkEngine();
 
   const stateRef = useRef({
     points: [] as RawPoint[],
@@ -19,6 +30,10 @@ export default function Home() {
     lastRenderedStrokeCount: 0,
     renderedSegmentCount: 0,
   });
+
+  // Ref to store current strokes for render loop (avoids useEffect re-run)
+  const strokesRef = useRef(strokes);
+  strokesRef.current = strokes;
 
   const renderLoopRef = useRef<RenderLoop | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -75,27 +90,28 @@ export default function Home() {
     renderLoopRef.current = renderLoop;
 
     const renderer = new StrokeRenderer({
-      color: '#000000',
+      color: currentColor,
       ...PEN_CONFIGS[currentPenSize],
     });
 
     const render = () => {
       const state = stateRef.current;
+      const currentStrokes = strokesRef.current;
 
       // Only redraw offscreen canvas if completed strokes changed
-      if (state.lastRenderedStrokeCount !== strokes.length) {
+      if (state.lastRenderedStrokeCount !== currentStrokes.length) {
         offscreenCtx.fillStyle = '#ffffff';
         const rect = canvas.getBoundingClientRect();
         offscreenCtx.fillRect(0, 0, rect.width, rect.height);
 
-        offscreenCtx.fillStyle = '#000000';
-        for (const stroke of strokes) {
+        for (const stroke of currentStrokes) {
+          offscreenCtx.fillStyle = stroke.color;
           for (const segment of stroke.segments) {
-            drawSegment(offscreenCtx, renderer, segment);
+            renderer.drawSegment(offscreenCtx, segment);
           }
         }
 
-        state.lastRenderedStrokeCount = strokes.length;
+        state.lastRenderedStrokeCount = currentStrokes.length;
       }
 
       // Composite offscreen to main canvas
@@ -107,9 +123,9 @@ export default function Home() {
       // Draw current stroke
       if (state.points.length > 0) {
         const currentStroke = createStroke(state.points);
-        ctx.fillStyle = '#000000';
+        ctx.fillStyle = currentColor;
         for (const segment of currentStroke.segments) {
-          drawSegment(ctx, renderer, segment);
+          renderer.drawSegment(ctx, segment);
         }
       }
     };
@@ -139,7 +155,7 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyDown);
       renderLoop.stop();
     };
-  }, [strokes, createStroke, currentPenSize, undo, redo]);
+  }, [createStroke, currentPenSize, undo, redo]);
 
   const getCanvasCoords = (e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current;
@@ -228,7 +244,7 @@ export default function Home() {
           <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
 
           <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex flex-col gap-2">
-            <div className="flex gap-2 bg-white rounded-lg shadow-md p-2">
+            <div className="flex gap-2 bg-white rounded-lg shadow-md p-2 flex-wrap">
               {(Object.keys(PEN_CONFIGS) as PenSize[]).map(size => (
                 <button
                   key={size}
@@ -240,6 +256,21 @@ export default function Home() {
                   {size.charAt(0).toUpperCase() + size.slice(1)}
                 </button>
               ))}
+            </div>
+
+            <div className="flex gap-2 bg-white rounded-lg shadow-md p-2 items-center">
+              <label htmlFor="pen-color" className="sr-only">
+                Pen Color
+              </label>
+              <input
+                id="pen-color"
+                type="color"
+                value={currentColor}
+                onChange={e => setPenColor(e.target.value)}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded cursor-pointer border-2 border-gray-200 hover:border-gray-400"
+                aria-label="Pen color picker"
+              />
+              <span className="text-xs text-gray-500">{currentColor.toUpperCase()}</span>
             </div>
 
             <div className="flex gap-2 bg-white rounded-lg shadow-md p-2">
