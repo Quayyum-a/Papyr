@@ -23,22 +23,22 @@ export async function getBooks(): Promise<{ data: BookWithPageCount[] | null; er
 
     // Transform to include page count and last page
     const booksWithPageCount: BookWithPageCount[] = (data || []).map((book: any) => {
-      const pages = book.pages || [];
-      const lastPage = pages.length > 0
-        ? pages.reduce((latest: any, page: any) =>
+      const { pages, ...rest } = book;
+      const pageList = pages || [];
+      const lastPage = pageList.length > 0
+        ? pageList.reduce((latest: any, page: any) =>
             new Date(page.updated_at) > new Date(latest.updated_at) ? page : latest
-          , pages[0])
+          , pageList[0])
         : null;
 
       return {
-        ...book,
-        page_count: pages.length,
+        ...rest,
+        page_count: pageList.length,
         last_page: lastPage ? {
           id: lastPage.id,
           page_number: lastPage.page_number,
           updated_at: lastPage.updated_at
         } : null,
-        pages: undefined // Remove pages from final object
       };
     });
 
