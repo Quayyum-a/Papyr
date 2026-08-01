@@ -2,96 +2,105 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { getStroke } from 'perfect-freehand';
-import { useStrokeHistory } from '../hooks/useStrokeHistory';
-import { v4 as uuidv4 } from 'uuid';
-import { Stroke, Point } from '../types/stroke';
+import { useInkEngine } from '../hooks/useInkEngine';
+import { StrokeRenderer } from '../lib/ink-engine/stroke-renderer';
+import type { RawPoint, PenSize } from '../lib/ink-engine/types';
+import { PEN_CONFIGS } from '../lib/ink-engine/types';
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [points, setPoints] = useState<Point[]>([]);
-  const { strokes, addStroke, undo, redo, canUndo, canRedo } = useStrokeHistory();
+  const { strokes, createStroke, addStroke, undo, redo, canUndo, canRedo, setPenSize, currentPenSize } =
+    useInkEngine();
+
+  const [points, setPoints] = useState<RawPoint[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    const resizeCanvas = () => {
-      canvas.width = canvas.clientWidth;
-      canvas.height = canvas.clientHeight;
-      redrawCanvas();
+    const setupCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+
+      ctx.scale(dpr, dpr);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
     };
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    setupCanvas();
+    redrawCanvas();
+
+    const handleResize = () => setupCanvas();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      }
+      if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [undo, redo]);
 
   useEffect(() => {
     redrawCanvas();
   }, [strokes, points]);
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.ctrlKey && e.key === 'z') {
-      e.preventDefault();
-      undo();
-    }
-    if (e.ctrlKey && e.key === 'y') {
-      e.preventDefault();
-      redo();
-    }
-  };
-
-  const drawStroke = (ctx: CanvasRenderingContext2D, points: Point[], width: number) => {
-    if (points.length < 2) return;
-    const smoothed = points.length > 2 ? getStroke(points as any) : points.map(p => [p.x, p.y]);
-    ctx.beginPath();
-    ctx.moveTo(smoothed[0][0], smoothed[0][1]);
-    for (let i = 1; i < smoothed.length; i++) {
-      const point = smoothed[i];
-      ctx.lineTo(point[0], point[1]);
-    }
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalAlpha = 0.95;
-    ctx.stroke();
-    ctx.globalAlpha = 1.0;
-  };
-
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Draw all strokes from history
-    strokes.forEach((stroke) => {
-      drawStroke(ctx, stroke.points, stroke.width);
+    ctx.fillRect(0, 0, rect.width, rect.height);
+
+    ctx.fillStyle = '#000000';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const renderer = new StrokeRenderer({
+      color: '#000000',
+      ...PEN_CONFIGS[currentPenSize],
     });
-    // Draw current stroke if exists
+
+    for (const stroke of strokes) {
+      for (const segment of stroke.segments) {
+        renderer.drawSegment(ctx, segment);
+      }
+    }
+
     if (points.length > 0) {
-      const avgPressure =
-        points.reduce((sum, p) => sum + (p.pressure ?? 0.5), 0) / points.length;
-      const width = 2 + avgPressure * 1.5;
-      drawStroke(ctx, points, width);
+      const currentStroke = createStroke(points);
+      for (const segment of currentStroke.segments) {
+        renderer.drawSegment(ctx, segment);
+      }
     }
   };
 
-  const getCanvasCoords = (e: React.PointerEvent) => {
+  const getCanvasCoords = (e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
+
     const rect = canvas.getBoundingClientRect();
     return {
       x: e.clientX - rect.left,
@@ -101,112 +110,109 @@ export default function Home() {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDrawing(true);
+    startTimeRef.current = Date.now();
     const coords = getCanvasCoords(e);
-    setPoints([{
-      x: coords.x,
-      y: coords.y,
-      pressure: e.pressure,
-      timestamp: e.timeStamp,
-      tiltX: e.tiltX,
-      tiltY: e.tiltY,
-      twist: e.twist
-    }]);
+
+    setPoints([
+      {
+        x: coords.x,
+        y: coords.y,
+        t: Date.now(),
+        pressure: e.pressure,
+        tiltX: e.tiltX,
+        tiltY: e.tiltY,
+      },
+    ]);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDrawing) return;
+
     const coords = getCanvasCoords(e);
-    setPoints((prev) => [
+    setPoints(prev => [
       ...prev,
       {
         x: coords.x,
         y: coords.y,
+        t: Date.now(),
         pressure: e.pressure,
-        timestamp: e.timeStamp,
         tiltX: e.tiltX,
         tiltY: e.tiltY,
-        twist: e.twist
-      }
+      },
     ]);
   };
 
   const handlePointerUp = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    if (points.length > 0) {
-      // Calculate average pressure
-      const avgPressure =
-        points.reduce((sum, p) => sum + (p.pressure ?? 0.5), 0) / points.length;
-      const width = 2 + avgPressure * 1.5;
-      // Create a stroke from the points
-      const stroke: Stroke = {
-        id: uuidv4(),
-        cellId: 'canvas-cell', // placeholder for now
-        points: [...points],
-        tool: 'pen',
-        color: '#000000',
-        width: width,
-        smoothed: true,
-        createdAt: new Date().toISOString()
-      };
-      addStroke(stroke);
+    if (!isDrawing || points.length < 2) {
+      setIsDrawing(false);
       setPoints([]);
+      return;
     }
+
+    setIsDrawing(false);
+
+    const stroke = createStroke(points);
+    addStroke(stroke);
+    setPoints([]);
   };
 
   const handlePointerLeave = () => {
     if (isDrawing) {
-      setIsDrawing(false);
-      setPoints([]);
+      handlePointerUp();
     }
   };
 
   return (
     <div className="fixed inset-0 bg-white flex flex-col">
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md px-4 py-3 flex items-center gap-3 border-b border-gray-200 h-20 sm:h-24">
-        <Image
-          src="/favicon.png"
-          alt="Papyr Logo"
-          width={48}
-          height={48}
-          className="rounded-lg w-10 h-10 sm:w-12 sm:h-12"
-        />
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">
-          Papyr
-        </h1>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm px-6 py-4 flex items-center gap-4 border-b border-gray-100 h-16 sm:h-20">
+        <Image src="/favicon.png" alt="Papyr Logo" width={56} height={56} className="rounded-lg w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Papyr</h1>
       </div>
-      <div className="mt-20 sm:mt-24 flex-1 flex flex-col overflow-hidden">
-      <div
-        className="relative flex-1 border-0 overflow-hidden bg-white touch-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerLeave}
-        onPointerCancel={handlePointerLeave}
-      >
-        <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
-        {!canUndo && !canRedo && strokes.length === 0 && points.length === 0 ? (
-          <p className="absolute inset-0 flex items-center justify-center text-gray-500">
-            Draw with mouse, touch, or pen to test the drawing engine
-          </p>
-        ) : null}
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 flex gap-2">
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="px-2 py-1 sm:px-3 sm:py-1 text-xs sm:text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition-colors"
-          >
-            ↶ Undo
-          </button>
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className="px-2 py-1 sm:px-3 sm:py-1 text-xs sm:text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition-colors"
-          >
-            ↷ Redo
-          </button>
+
+      <div className="mt-16 sm:mt-20 flex-1 flex flex-col overflow-hidden">
+        <div
+          className="relative flex-1 border-0 overflow-hidden bg-white touch-none"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onPointerCancel={handlePointerLeave}
+        >
+          <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
+
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex flex-col gap-2">
+            <div className="flex gap-2 bg-white rounded-lg shadow-md p-2">
+              {(Object.keys(PEN_CONFIGS) as PenSize[]).map(size => (
+                <button
+                  key={size}
+                  onClick={() => setPenSize(size)}
+                  className={`px-3 py-1 text-xs sm:text-sm rounded transition-colors ${
+                    currentPenSize === size ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {size.charAt(0).toUpperCase() + size.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2 bg-white rounded-lg shadow-md p-2">
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                className="px-2 py-1 sm:px-3 text-xs sm:text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 transition-colors"
+              >
+                ↶ Undo
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                className="px-2 py-1 sm:px-3 text-xs sm:text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 transition-colors"
+              >
+                ↷ Redo
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );
