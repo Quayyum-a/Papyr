@@ -22,10 +22,10 @@ export async function getBooks(): Promise<{ data: BookWithPageCount[] | null; er
     if (error) throw error;
 
     // Transform to include page count and last page
-    const booksWithPageCount: BookWithPageCount[] = (data || []).map(book => {
+    const booksWithPageCount: BookWithPageCount[] = (data || []).map((book: any) => {
       const pages = book.pages || [];
       const lastPage = pages.length > 0
-        ? pages.reduce((latest, page) =>
+        ? pages.reduce((latest: any, page: any) =>
             new Date(page.updated_at) > new Date(latest.updated_at) ? page : latest
           , pages[0])
         : null;

@@ -11,6 +11,7 @@ function createMockClient() {
     update: () => mockQuery,
     delete: () => mockQuery,
     eq: () => mockQuery,
+    order: () => mockQuery,
     single: async () => ({ data: null, error: new Error('Supabase not configured') }),
     then: (resolve: (value: any) => void) => resolve({ data: null, error: new Error('Supabase not configured') }),
   };
