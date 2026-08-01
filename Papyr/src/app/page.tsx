@@ -23,6 +23,7 @@ export default function Home() {
     const resizeCanvas = () => {
       canvas.width = canvas.clientWidth;
       canvas.height = canvas.clientHeight;
+      redrawCanvas();
     };
 
     resizeCanvas();
@@ -34,6 +35,10 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  useEffect(() => {
+    redrawCanvas();
+  }, [strokes, points]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.ctrlKey && e.key === 'z') {
@@ -65,7 +70,8 @@ export default function Home() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     // Draw all strokes from history
     strokes.forEach((stroke) => {
       drawStroke(ctx, stroke.points, stroke.width);
