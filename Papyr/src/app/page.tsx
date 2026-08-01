@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useInkEngine } from '../hooks/useInkEngine';
 import { StrokeRenderer } from '../lib/ink-engine/stroke-renderer';
-import type { RawPoint, PenSize } from '../lib/ink-engine/types';
+import { RenderLoop } from '../lib/ink-engine/render-loop';
+import type { RawPoint, PenSize, Stroke } from '../lib/ink-engine/types';
 import { PEN_CONFIGS } from '../lib/ink-engine/types';
 
 export default function Home() {
@@ -12,16 +13,34 @@ export default function Home() {
   const { strokes, createStroke, addStroke, undo, redo, canUndo, canRedo, setPenSize, currentPenSize } =
     useInkEngine();
 
-  const [points, setPoints] = useState<RawPoint[]>([]);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const startTimeRef = useRef<number>(0);
+  const stateRef = useRef({
+    points: [] as RawPoint[],
+    isDrawing: false,
+    lastRenderedStrokeCount: 0,
+    renderedSegmentCount: 0,
+  });
 
+  const renderLoopRef = useRef<RenderLoop | null>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const offscreenCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+
+  // Setup canvas and render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    ctxRef.current = ctx;
+
+    // Setup offscreen canvas for completed strokes
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvasRef.current = offscreenCanvas;
+    const offscreenCtx = offscreenCanvas.getContext('2d');
+    if (!offscreenCtx) return;
+    offscreenCtxRef.current = offscreenCtx;
 
     const setupCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -29,24 +48,86 @@ export default function Home() {
 
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
-
       ctx.scale(dpr, dpr);
+
+      offscreenCanvas.width = canvas.width;
+      offscreenCanvas.height = canvas.height;
+      offscreenCtx.scale(dpr, dpr);
+
+      ctx.imageSmoothingEnabled = true;
+      offscreenCtx.imageSmoothingEnabled = true;
+
+      clearCanvas();
+    };
+
+    const clearCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, rect.width, rect.height);
+      offscreenCtx.fillStyle = '#ffffff';
+      offscreenCtx.fillRect(0, 0, rect.width, rect.height);
     };
 
     setupCanvas();
-    redrawCanvas();
+
+    // Initialize render loop
+    const renderLoop = new RenderLoop();
+    renderLoopRef.current = renderLoop;
+
+    const renderer = new StrokeRenderer({
+      color: '#000000',
+      ...PEN_CONFIGS[currentPenSize],
+    });
+
+    const render = () => {
+      const state = stateRef.current;
+
+      // Only redraw offscreen canvas if completed strokes changed
+      if (state.lastRenderedStrokeCount !== strokes.length) {
+        offscreenCtx.fillStyle = '#ffffff';
+        const rect = canvas.getBoundingClientRect();
+        offscreenCtx.fillRect(0, 0, rect.width, rect.height);
+
+        offscreenCtx.fillStyle = '#000000';
+        for (const stroke of strokes) {
+          for (const segment of stroke.segments) {
+            drawSegment(offscreenCtx, renderer, segment);
+          }
+        }
+
+        state.lastRenderedStrokeCount = strokes.length;
+      }
+
+      // Composite offscreen to main canvas
+      ctx.fillStyle = '#ffffff';
+      const rect = canvas.getBoundingClientRect();
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.drawImage(offscreenCanvas, 0, 0);
+
+      // Draw current stroke
+      if (state.points.length > 0) {
+        const currentStroke = createStroke(state.points);
+        ctx.fillStyle = '#000000';
+        for (const segment of currentStroke.segments) {
+          drawSegment(ctx, renderer, segment);
+        }
+      }
+    };
+
+    renderLoop.addCallback(render);
+    renderLoop.start();
 
     const handleResize = () => setupCanvas();
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'z') {
         e.preventDefault();
         undo();
+        stateRef.current.lastRenderedStrokeCount = 0;
       }
       if (e.ctrlKey && e.key === 'y') {
         e.preventDefault();
         redo();
+        stateRef.current.lastRenderedStrokeCount = 0;
       }
     };
 
@@ -56,46 +137,9 @@ export default function Home() {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
+      renderLoop.stop();
     };
-  }, [undo, redo]);
-
-  useEffect(() => {
-    redrawCanvas();
-  }, [strokes, points]);
-
-  const redrawCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, rect.width, rect.height);
-
-    ctx.fillStyle = '#000000';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    const renderer = new StrokeRenderer({
-      color: '#000000',
-      ...PEN_CONFIGS[currentPenSize],
-    });
-
-    for (const stroke of strokes) {
-      for (const segment of stroke.segments) {
-        renderer.drawSegment(ctx, segment);
-      }
-    }
-
-    if (points.length > 0) {
-      const currentStroke = createStroke(points);
-      for (const segment of currentStroke.segments) {
-        renderer.drawSegment(ctx, segment);
-      }
-    }
-  };
+  }, [strokes, createStroke, currentPenSize, undo, redo]);
 
   const getCanvasCoords = (e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current;
@@ -109,11 +153,10 @@ export default function Home() {
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDrawing(true);
-    startTimeRef.current = Date.now();
+    stateRef.current.isDrawing = true;
     const coords = getCanvasCoords(e);
 
-    setPoints([
+    stateRef.current.points = [
       {
         x: coords.x,
         y: coords.y,
@@ -122,42 +165,40 @@ export default function Home() {
         tiltX: e.tiltX,
         tiltY: e.tiltY,
       },
-    ]);
+    ];
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDrawing) return;
+    if (!stateRef.current.isDrawing) return;
 
     const coords = getCanvasCoords(e);
-    setPoints(prev => [
-      ...prev,
-      {
-        x: coords.x,
-        y: coords.y,
-        t: Date.now(),
-        pressure: e.pressure,
-        tiltX: e.tiltX,
-        tiltY: e.tiltY,
-      },
-    ]);
+    stateRef.current.points.push({
+      x: coords.x,
+      y: coords.y,
+      t: Date.now(),
+      pressure: e.pressure,
+      tiltX: e.tiltX,
+      tiltY: e.tiltY,
+    });
   };
 
   const handlePointerUp = () => {
-    if (!isDrawing || points.length < 2) {
-      setIsDrawing(false);
-      setPoints([]);
+    if (!stateRef.current.isDrawing || stateRef.current.points.length < 2) {
+      stateRef.current.isDrawing = false;
+      stateRef.current.points = [];
       return;
     }
 
-    setIsDrawing(false);
+    stateRef.current.isDrawing = false;
 
-    const stroke = createStroke(points);
+    const stroke = createStroke(stateRef.current.points);
     addStroke(stroke);
-    setPoints([]);
+    stateRef.current.points = [];
+    stateRef.current.lastRenderedStrokeCount = 0;
   };
 
   const handlePointerLeave = () => {
-    if (isDrawing) {
+    if (stateRef.current.isDrawing) {
       handlePointerUp();
     }
   };
@@ -165,7 +206,13 @@ export default function Home() {
   return (
     <div className="fixed inset-0 bg-white flex flex-col">
       <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm px-6 py-4 flex items-center gap-4 border-b border-gray-100 h-16 sm:h-20">
-        <Image src="/favicon.png" alt="Papyr Logo" width={56} height={56} className="rounded-lg w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0" />
+        <Image
+          src="/favicon.png"
+          alt="Papyr Logo"
+          width={56}
+          height={56}
+          className="rounded-lg w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0"
+        />
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Papyr</h1>
       </div>
 
@@ -216,4 +263,68 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+function drawSegment(
+  ctx: CanvasRenderingContext2D,
+  renderer: StrokeRenderer,
+  segment: ReturnType<StrokeRenderer['renderStroke']>[0]
+) {
+  const steps = 20;
+  const outline: { top: [number, number][]; bottom: [number, number][] } = { top: [], bottom: [] };
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const point = bezierPoint(segment, t);
+    const width = segment.widthStart + (segment.widthEnd - segment.widthStart) * t;
+
+    const normal = perpendicular(segment, t);
+    const offset = width / 2;
+
+    outline.top.push([point.x + normal.x * offset, point.y + normal.y * offset]);
+    outline.bottom.unshift([point.x - normal.x * offset, point.y - normal.y * offset]);
+  }
+
+  fillPath(ctx, [...outline.top, ...outline.bottom]);
+}
+
+function bezierPoint(segment: any, t: number) {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const mt3 = mt2 * mt;
+  const t2 = t * t;
+  const t3 = t2 * t;
+
+  const x = mt3 * segment.p0[0] + 3 * mt2 * t * segment.p1[0] + 3 * mt * t2 * segment.p2[0] + t3 * segment.p3[0];
+  const y = mt3 * segment.p0[1] + 3 * mt2 * t * segment.p1[1] + 3 * mt * t2 * segment.p2[1] + t3 * segment.p3[1];
+
+  return { x, y };
+}
+
+function perpendicular(segment: any, t: number) {
+  const eps = 0.001;
+  const p1 = bezierPoint(segment, Math.max(0, t - eps));
+  const p2 = bezierPoint(segment, Math.min(1, t + eps));
+
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.sqrt(dx * dx + dy * dy);
+
+  if (len === 0) return { x: 0, y: 1 };
+
+  return { x: -dy / len, y: dx / len };
+}
+
+function fillPath(ctx: CanvasRenderingContext2D, path: [number, number][]) {
+  if (path.length < 3) return;
+
+  ctx.beginPath();
+  ctx.moveTo(path[0][0], path[0][1]);
+
+  for (let i = 1; i < path.length; i++) {
+    ctx.lineTo(path[i][0], path[i][1]);
+  }
+
+  ctx.closePath();
+  ctx.fill();
 }
