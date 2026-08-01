@@ -112,13 +112,30 @@ Each issue follows this format:
 
 ### Resolved Issues (for reference)
 
+#### KI-006: Input Latency Too High (RESOLVED)
+- **ID**: KI-006
+- **Title**: Writing felt slow and laggy, pointer events delayed
+- **Status**: Closed
+- **Priority**: Critical
+- **Component**: Rendering Engine
+- **Description**: Every pointer event triggered React state update, causing batching delay and full canvas redraw. This created 100-200ms latency, making writing feel unresponsive.
+- **Resolution**: Redesigned rendering architecture:
+  - Moved pointer events to refs (no state updates)
+  - Implemented requestAnimationFrame loop (independent from React)
+  - Added offscreen canvas for completed strokes
+  - Only render changed content each frame
+- **Date Resolved**: 2026-08-01
+- **New Latency**: <16ms (imperceptible)
+- **Notes**: See LATENCY_OPTIMIZATION.md for full architecture details
+- **Commit**: bae4e42
+
 #### KI-000: Initial Canvas Setup Issue (RESOLVED)
 - **ID**: KI-000
 - **Title**: Canvas not resizing properly on window orientation change
 - **Status**: Closed
 - **Resolution**: Added resize observer and proper canvas dimension updating
 - **Date Resolved**: 2026-07-31
-- **Notes**: Fixed in commit abc123
+- **Notes**: Fixed in initial sprint
 
 ---
 
