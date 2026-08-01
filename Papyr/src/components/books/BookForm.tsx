@@ -90,7 +90,7 @@ export function BookForm({ initialData, onSubmit, isLoading, title, submitText }
           disabled={isLoading}
         />
         {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
-        <p className="mt-1 text-xs text-gray-500">{formData.description.length}/500 characters</p>
+        <p className="mt-1 text-xs text-gray-500">{(formData.description || '').length}/500 characters</p>
       </div>
 
       <div>
