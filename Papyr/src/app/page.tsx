@@ -1,12 +1,14 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
-import * as perfectFreehand from 'perfect-freehand';
-import { useStrokeHistory } from './hooks/useStrokeHistory';
+import { getStroke } from 'perfect-freehand';
+import { useStrokeHistory } from '../hooks/useStrokeHistory';
 import { v4 as uuidv4 } from 'uuid';
-import { Stroke, StrokePoint } from './types/stroke';
+import { Stroke, Point } from '../types/stroke';
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [points, setPoints] = useState<StrokePoint[]>([]);
+  const [points, setPoints] = useState<Point[]>([]);
   const { strokes, addStroke, undo, redo, canUndo, canRedo } = useStrokeHistory();
   const [isDrawing, setIsDrawing] = useState(false);
 
@@ -43,14 +45,14 @@ export default function Home() {
     }
   };
 
-  const drawStroke = (ctx: CanvasRenderingContext2D, points: StrokePoint[], width: number) => {
+  const drawStroke = (ctx: CanvasRenderingContext2D, points: Point[], width: number) => {
     if (points.length < 2) return;
-    const smoothed = points.length > 2 ? [...perfectFreehand(points)] : points;
+    const smoothed = points.length > 2 ? getStroke(points as any) : points.map(p => [p.x, p.y]);
     ctx.beginPath();
-    ctx.moveTo(smoothed[0].x, smoothed[0].y);
+    ctx.moveTo(smoothed[0][0], smoothed[0][1]);
     for (let i = 1; i < smoothed.length; i++) {
       const point = smoothed[i];
-      ctx.lineTo(point.x, point.y);
+      ctx.lineTo(point[0], point[1]);
     }
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = width;
@@ -77,7 +79,7 @@ export default function Home() {
     }
   };
 
-  const handlePointerDown = (e: PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     setIsDrawing(true);
     setPoints([{
       x: e.clientX,
@@ -90,7 +92,7 @@ export default function Home() {
     }]);
   };
 
-  const handlePointerMove = (e: PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDrawing) return;
     setPoints((prev) => [
       ...prev,
