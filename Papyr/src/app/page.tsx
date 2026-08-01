@@ -140,12 +140,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+    <div className="min-h-screen bg-gray-50 flex flex-col p-4">
+      <h1 className="text-3xl font-bold mb-4 text-gray-800">
         Papyr - Handwritten Digital Ledger
       </h1>
       <div
-        className="relative w-full max-w-2xl h-96 border-2 border-dashed border-gray-300 rounded-lg"
+        className="relative flex-1 border-2 border-dashed border-gray-300 rounded-lg"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -175,9 +175,6 @@ export default function Home() {
           </button>
         </div>
       </div>
-      <p className="mt-4 text-sm text-gray-500">
-        Draw with mouse, touch, or pen to test the drawing engine
-      </p>
     </div>
   );
 }

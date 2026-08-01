@@ -2,58 +2,56 @@ import { useState, useCallback } from 'react';
 import { Stroke } from '../types/stroke';
 
 export const useStrokeHistory = () => {
-  const [past, setPast] = useState<Stroke[]>([]);
-  const [present, setPresent] = useState<Stroke[]>([]);
-  const [future, setFuture] = useState<Stroke[]>([]);
+  const [state, setState] = useState({
+    past: [] as Stroke[],
+    present: [] as Stroke[],
+    future: [] as Stroke[]
+  });
 
   const addStroke = useCallback((newStroke: Stroke) => {
-    setPast((prevPast) => {
-      const newPast = [...prevPast, newStroke];
-      // Limit history to 50 actions
-      if (newPast.length > 50) {
-        newPast.shift(); // Remove the oldest
-      }
-      return newPast;
+    setState(prev => {
+      const newPast = [...prev.past, ...prev.present];
+      if (newPast.length > 50) newPast.shift();
+      return {
+        past: newPast,
+        present: [newStroke],
+        future: []
+      };
     });
-    setPresent((prevPresent) => [...prevPresent, newStroke]);
-    setFuture([]); // Clear redo stack
   }, []);
 
   const undo = useCallback(() => {
-    setPast((prevPast) => {
-      if (prevPast.length === 0) return past;
-      const newPast = past.slice(0, -1);
-      const popped = past[past.length - 1];
-      setPresent((prevPresent) => {
-        // Remove the popped stroke from present
-        const newPresent = [...prevPresent].filter((stroke) => stroke.id !== popped.id);
-        setFuture((prevFuture) => [...prevFuture, popped]);
-        return newPresent;
-      });
-      return newPast;
+    setState(prev => {
+      if (prev.past.length === 0) return prev;
+      const newPast = prev.past.slice(0, -1);
+      const popped = prev.past[prev.past.length - 1];
+      return {
+        past: newPast,
+        present: prev.present.filter(stroke => stroke.id !== popped.id),
+        future: [popped, ...prev.future]
+      };
     });
   }, []);
 
   const redo = useCallback(() => {
-    setFuture((prevFuture) => {
-      if (prevFuture.length === 0) return future;
-      const newFuture = future.slice(0, -1);
-      const popped = future[future.length - 1];
-      setPast((prevPast) => [...past, popped]);
-      setPresent((prevPresent) => [...prevPresent, popped]);
-      return newFuture;
+    setState(prev => {
+      if (prev.future.length === 0) return prev;
+      const popped = prev.future[0];
+      const newFuture = prev.future.slice(1);
+      return {
+        past: [...prev.past, popped],
+        present: prev.present.filter(stroke => stroke.id !== popped.id),
+        future: newFuture
+      };
     });
   }, []);
 
-  const canUndo = past.length > 0;
-  const canRedo = future.length > 0;
-
   return {
-    strokes: present,
+    strokes: state.present,
     addStroke,
     undo,
     redo,
-    canUndo,
-    canRedo
+    canUndo: state.past.length > 0,
+    canRedo: state.future.length > 0
   };
 };
