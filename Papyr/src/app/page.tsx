@@ -39,6 +39,8 @@ export default function Home() {
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const offscreenCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const rendererRef = useRef<StrokeRenderer | null>(null);
+  const renderCallbackRef = useRef<(() => void) | null>(null);
 
   // Setup canvas and render loop
   useEffect(() => {
@@ -89,14 +91,19 @@ export default function Home() {
     const renderLoop = new RenderLoop();
     renderLoopRef.current = renderLoop;
 
+    // Create renderer and store in ref
     const renderer = new StrokeRenderer({
       color: currentColor,
       ...PEN_CONFIGS[currentPenSize],
     });
+    rendererRef.current = renderer;
 
+    // Define render callback
     const render = () => {
       const state = stateRef.current;
       const currentStrokes = strokesRef.current;
+      const currentRenderer = rendererRef.current;
+      if (!currentRenderer) return;
 
       // Only redraw offscreen canvas if completed strokes changed
       if (state.lastRenderedStrokeCount !== currentStrokes.length) {
@@ -107,7 +114,7 @@ export default function Home() {
         for (const stroke of currentStrokes) {
           offscreenCtx.fillStyle = stroke.color;
           for (const segment of stroke.segments) {
-            renderer.drawSegment(offscreenCtx, segment);
+            currentRenderer.drawSegment(offscreenCtx, segment);
           }
         }
 
@@ -125,11 +132,12 @@ export default function Home() {
         const currentStroke = createStroke(state.points);
         ctx.fillStyle = currentColor;
         for (const segment of currentStroke.segments) {
-          renderer.drawSegment(ctx, segment);
+          currentRenderer.drawSegment(ctx, segment);
         }
       }
     };
 
+    renderCallbackRef.current = render;
     renderLoop.addCallback(render);
     renderLoop.start();
 
@@ -153,9 +161,12 @@ export default function Home() {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
+      if (renderCallbackRef.current) {
+        renderLoop.removeCallback(renderCallbackRef.current);
+      }
       renderLoop.stop();
     };
-  }, [createStroke, currentPenSize, undo, redo]);
+  }, [createStroke, currentPenSize, currentColor, undo, redo]);
 
   const getCanvasCoords = (e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current;
@@ -294,68 +305,4 @@ export default function Home() {
       </div>
     </div>
   );
-}
-
-function drawSegment(
-  ctx: CanvasRenderingContext2D,
-  renderer: StrokeRenderer,
-  segment: ReturnType<StrokeRenderer['renderStroke']>[0]
-) {
-  const steps = 20;
-  const outline: { top: [number, number][]; bottom: [number, number][] } = { top: [], bottom: [] };
-
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const point = bezierPoint(segment, t);
-    const width = segment.widthStart + (segment.widthEnd - segment.widthStart) * t;
-
-    const normal = perpendicular(segment, t);
-    const offset = width / 2;
-
-    outline.top.push([point.x + normal.x * offset, point.y + normal.y * offset]);
-    outline.bottom.unshift([point.x - normal.x * offset, point.y - normal.y * offset]);
-  }
-
-  fillPath(ctx, [...outline.top, ...outline.bottom]);
-}
-
-function bezierPoint(segment: any, t: number) {
-  const mt = 1 - t;
-  const mt2 = mt * mt;
-  const mt3 = mt2 * mt;
-  const t2 = t * t;
-  const t3 = t2 * t;
-
-  const x = mt3 * segment.p0[0] + 3 * mt2 * t * segment.p1[0] + 3 * mt * t2 * segment.p2[0] + t3 * segment.p3[0];
-  const y = mt3 * segment.p0[1] + 3 * mt2 * t * segment.p1[1] + 3 * mt * t2 * segment.p2[1] + t3 * segment.p3[1];
-
-  return { x, y };
-}
-
-function perpendicular(segment: any, t: number) {
-  const eps = 0.001;
-  const p1 = bezierPoint(segment, Math.max(0, t - eps));
-  const p2 = bezierPoint(segment, Math.min(1, t + eps));
-
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-
-  if (len === 0) return { x: 0, y: 1 };
-
-  return { x: -dy / len, y: dx / len };
-}
-
-function fillPath(ctx: CanvasRenderingContext2D, path: [number, number][]) {
-  if (path.length < 3) return;
-
-  ctx.beginPath();
-  ctx.moveTo(path[0][0], path[0][1]);
-
-  for (let i = 1; i < path.length; i++) {
-    ctx.lineTo(path[i][0], path[i][1]);
-  }
-
-  ctx.closePath();
-  ctx.fill();
 }
