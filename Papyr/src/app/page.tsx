@@ -147,21 +147,22 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col p-4">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="h-screen bg-gray-50 flex flex-col">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center gap-4 border-b border-gray-200">
         <Image
           src="/favicon.png"
           alt="Papyr Logo"
-          width={48}
-          height={48}
-          className="rounded"
+          width={56}
+          height={56}
+          className="rounded-lg"
         />
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-4xl font-bold text-gray-900">
           Papyr
         </h1>
       </div>
+      <div className="mt-20 flex-1 flex flex-col p-4">
       <div
-        className="relative flex-1 border-2 border-dashed border-gray-300 rounded-lg"
+        className="relative flex-1 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -190,6 +191,7 @@ export default function Home() {
             Redo (Ctrl+Y)
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

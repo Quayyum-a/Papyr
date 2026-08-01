@@ -7,9 +7,13 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Papyr - Handwritten Digital Ledger',
   description: 'Offline-first handwritten digital ledger designed to replace physical notebooks',
-  icons: {
-    icon: '/favicon.png',
-  },
+  icons: [
+    {
+      rel: 'icon',
+      url: '/favicon.png',
+      type: 'image/png',
+    },
+  ],
 };
 
 export default function RootLayout({
