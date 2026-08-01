@@ -6,6 +6,9 @@ node_modules/
 build/
 dist/
 *.bundle.js
+.next/
+out/
+*.tsbuildinfo
 
 # Environment variables
 .env
@@ -37,3 +40,15 @@ docs/
 # Version control
 .git/
 .gitignore
+
+# Vercel
+.vercel
+
+# Turbo
+.turbo
+
+# Coverage
+coverage/
+
+# Test
+test-results/
