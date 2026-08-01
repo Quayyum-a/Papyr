@@ -13,7 +13,7 @@ Validate the drawing engine core technologies: Canvas API, perfect-freehand inte
 - [x] Basic canvas rendering with perfect-freehand implemented
 - [x] Stroke data model created
 - [x] Undo/redo functionality implemented
-- [ ] Pressure sensitivity support added
+- [x] Pressure sensitivity support added
 - [ ] Testing on low-end Android devices
 
 ### Metrics
@@ -30,10 +30,10 @@ Validate the drawing engine core technologies: Canvas API, perfect-freehand inte
 - Canvas drawing with perfect-freehand
 - Stroke data model (TypeScript interface for Stroke and StrokePoint)
 - Undo/redo functionality (with stack and keyboard shortcuts)
+- Pressure sensitivity support (basic implementation using average pressure to adjust stroke width)
 
 ### Next Steps
-1. Add pressure sensitivity support
-2. Begin performance testing
+1. Test on low-end Android devices
 
 ### Blockers
 - None currently

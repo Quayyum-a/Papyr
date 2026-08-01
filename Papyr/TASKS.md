@@ -12,7 +12,7 @@
 | T006 | Implement basic canvas rendering with perfect-freehand integration | Create a canvas component that captures pointer input and renders smooth strokes using perfect-freehand | T004 | DONE | High | 3h | AI | Canvas displays smooth lines, supports pointer/pen/touch input, and uses perfect-freehand for smoothing |
 | T007 | Create stroke data model | Define TypeScript interfaces for stroke data, including points, pressure, timestamp, and tool metadata | T006 | DONE | High | 2h | AI | Stroke model includes all necessary properties for storage and rendering |
 | T008 | Implement basic undo/redo functionality | Add undo/redo stack for strokes with keyboard shortcuts (Ctrl+Z, Ctrl+Y) and UI buttons | T007 | DONE | Medium | 3h | AI | Users can undo and redo strokes, state is preserved across tool changes |
-| T009 | Add pressure sensitivity support | Modify stroke capture to use pressure input when available (e.g., Apple Pencil, Wacom) | T006 | TODO | Medium | 2h | AI | Stroke width varies with pressure on supported devices |
+| T009 | Add pressure sensitivity support | Modify stroke capture to use pressure input when available (e.g., Apple Pencil, Wacom) | T006 | DONE | Medium | 2h | AI | Stroke width varies with pressure on supported devices |
 | T010 | Test on low-end Android devices | Verify performance and usability on Android devices with limited resources | T006, T009 | TODO | Low | 4h | AI | App maintains 30+ FPS on low-end Android, touch input is responsive |
 
 ## Sprint 1: Foundation (Future)

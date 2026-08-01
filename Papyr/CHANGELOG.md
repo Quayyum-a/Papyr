@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Implemented pointer event handling for mouse, touch, and pen input
 - Added Stroke data model (TypeScript interface for Stroke and StrokePoint)
 - Implemented undo/redo functionality with keyboard shortcuts (Ctrl+Z, Ctrl+Y) and UI buttons
+- Added pressure sensitivity support (using average pressure to adjust stroke width)
 
 ### Changed
 - Updated package.json to use Next.js 14 and React 18

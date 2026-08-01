@@ -17,11 +17,11 @@ Drawing Engine MVP - Core canvas functionality with perfect-freehand integration
 - [x] Implement basic canvas rendering with perfect-freehand integration
 - [x] Create stroke data model
 - [x] Implement basic undo/redo functionality
+- [x] Add pressure sensitivity support
 
 ## Remaining Tasks
 
 ### Sprint 0 Tasks
-- [ ] Add pressure sensitivity support
 - [ ] Test on low-end Android devices
 
 ## Architecture Summary
@@ -111,16 +111,16 @@ Drawing Engine MVP - Core canvas functionality with perfect-freehand integration
    - Impact: Battery drain, laggy input
    - Status: Investigating
 
-2. **Priority**: Pressure sensitivity across different devices
+2. **Pressure sensitivity across different devices**
    - Impact: Inconsistent user experience
-   - Status: Implementation in progress
+   - Status: Implementation completed (basic implementation, needs refinement for different devices)
 
 3. **Priority**: Offline sync conflict resolution
    - Impact: Data integrity
    - Status: Design phase
 
 ## Next Task
-Add pressure sensitivity support
+Test on low-end Android devices
 
 ## Current Branch
 main

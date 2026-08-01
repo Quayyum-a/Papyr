@@ -19,7 +19,7 @@ export default function Home() {
 
     const resizeCanvas = () => {
       canvas.width = canvas.clientWidth;
-      canvas.height = clientHeight;
+      canvas.height = canvas.clientHeight;
     };
 
     resizeCanvas();
@@ -43,7 +43,7 @@ export default function Home() {
     }
   };
 
-  const drawStroke = (ctx: CanvasRenderingContext2D, points: StrokePoint[]) => {
+  const drawStroke = (ctx: CanvasRenderingContext2D, points: StrokePoint[], width: number) => {
     if (points.length < 2) return;
     const smoothed = points.length > 2 ? [...perfectFreehand(points)] : points;
     ctx.beginPath();
@@ -53,7 +53,7 @@ export default function Home() {
       ctx.lineTo(point.x, point.y);
     }
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = width;
     ctx.stroke();
   };
 
@@ -65,11 +65,15 @@ export default function Home() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     // Draw all strokes from history
     strokes.forEach((stroke) => {
-      drawStroke(ctx, stroke.points);
+      drawStroke(ctx, stroke.points, stroke.width);
     });
     // Draw current stroke if exists
     if (points.length > 0) {
-      drawStroke(ctx, points);
+      // Calculate average pressure for current points
+      const avgPressure =
+        points.reduce((sum, p) => sum + (p.pressure ?? 0.5), 0) / points.length;
+      const width = 0.5 + avgPressure * 2.5; // maps [0,1] to [0.5, 3.0]
+      drawStroke(ctx, points, width);
     }
   };
 
@@ -106,6 +110,10 @@ export default function Home() {
     if (!isDrawing) return;
     setIsDrawing(false);
     if (points.length > 0) {
+      // Calculate average pressure
+      const avgPressure =
+        points.reduce((sum, p) => sum + (p.pressure ?? 0.5), 0) / points.length;
+      const width = 0.5 + avgPressure * 2.5; // maps [0,1] to [0.5, 3.0]
       // Create a stroke from the points
       const stroke: Stroke = {
         id: uuidv4(),
@@ -113,7 +121,7 @@ export default function Home() {
         points: [...points],
         tool: 'pen',
         color: '#000000',
-        width: 2.0,
+        width: width,
         smoothed: true,
         createdAt: new Date().toISOString()
       };
