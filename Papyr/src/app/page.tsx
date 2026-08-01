@@ -245,7 +245,7 @@ export default function Home() {
 
       <div className="mt-16 sm:mt-20 flex-1 flex flex-col overflow-hidden">
         <div
-          className="relative flex-1 border-0 overflow-hidden bg-white touch-none"
+          className="relative flex-1 border-0 overflow-hidden bg-white"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
