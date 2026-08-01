@@ -7,6 +7,16 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Create a mock client for build-time when env vars are not set
 function createMockClient() {
+  const mockQuery = {
+    select: () => mockQuery,
+    insert: () => mockQuery,
+    update: () => mockQuery,
+    delete: () => mockQuery,
+    eq: () => mockQuery,
+    single: async () => ({ data: null, error: new Error('Supabase not configured') }),
+    then: (resolve: (value: any) => void) => resolve({ data: null, error: new Error('Supabase not configured') }),
+  };
+
   return {
     auth: {
       getSession: async () => ({ data: { session: null }, error: null }),
@@ -16,11 +26,7 @@ function createMockClient() {
       signInWithPassword: async () => ({ data: null, error: new Error('Supabase not configured') }),
       signOut: async () => ({ error: new Error('Supabase not configured') }),
     },
-    from: () => ({
-      select: () => ({ single: async () => ({ data: null, error: new Error('Supabase not configured') }) }),
-      insert: () => ({ error: new Error('Supabase not configured') }),
-      update: () => ({ eq: () => ({ error: new Error('Supabase not configured') }) }),
-    }),
+    from: () => mockQuery,
   };
 }
 

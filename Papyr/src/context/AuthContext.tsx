@@ -31,7 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      // Handle PostgrestError (has code) vs regular Error
+      if (error && typeof error === 'object' && 'code' in error && error.code !== 'PGRST116') {
         throw error;
       }
       return data as UserProfile | null;
