@@ -127,12 +127,12 @@ export default function Home() {
       ctx.fillRect(0, 0, rect.width, rect.height);
       ctx.drawImage(offscreenCanvas, 0, 0);
 
-      // Draw current stroke
+      // Draw current stroke (optimized: only render tail for real-time performance)
       if (state.points.length > 0) {
-        const currentStroke = createStroke(state.points);
+        const currentSegments = currentRenderer.renderStrokeTail(state.points);
         ctx.fillStyle = currentColor;
-        for (const segment of currentStroke.segments) {
-          currentRenderer.drawSegment(ctx, segment);
+        for (const segment of currentSegments) {
+          currentRenderer.drawSegment(ctx, segment, 10); // Fewer steps for real-time rendering
         }
       }
     };
@@ -166,7 +166,7 @@ export default function Home() {
       }
       renderLoop.stop();
     };
-  }, [createStroke, currentPenSize, currentColor, undo, redo]);
+  }, [currentPenSize, currentColor, undo, redo]);
 
   const getCanvasCoords = (e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current;

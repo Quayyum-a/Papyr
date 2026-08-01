@@ -1,6 +1,8 @@
 import type { RawPoint, StrokeSegment, PenConfig } from './types';
 import { simulatePressure, smoothPressure } from './pressure-simulator';
 
+const TAIL_POINTS = 20; // Number of recent points to process for real-time rendering
+
 export class StrokeRenderer {
   private config: PenConfig;
 
@@ -14,6 +16,52 @@ export class StrokeRenderer {
     const { pressures } = simulatePressure(points);
     const smoothedPressures = smoothPressure(pressures, this.config.smoothing);
     const smoothedPoints = this.catmullRomSmoothing(points);
+
+    const segments: StrokeSegment[] = [];
+
+    for (let i = 0; i < smoothedPoints.length - 1; i++) {
+      const p0 = smoothedPoints[i];
+      const p3 = smoothedPoints[i + 1];
+
+      const p1 = this.controlPoint(smoothedPoints, i, true);
+      const p2 = this.controlPoint(smoothedPoints, i + 1, false);
+
+      const widthStart = this.calculateWidth(smoothedPressures[i]);
+      const widthEnd = this.calculateWidth(smoothedPressures[i + 1]);
+
+      segments.push({
+        p0: [p0.x, p0.y],
+        p1: [p1.x, p1.y],
+        p2: [p2.x, p2.y],
+        p3: [p3.x, p3.y],
+        widthStart,
+        widthEnd,
+        pressureStart: smoothedPressures[i],
+        pressureEnd: smoothedPressures[i + 1],
+      });
+    }
+
+    return segments;
+  }
+
+  /**
+   * Render only the tail of a stroke for real-time display.
+   * Processes only the last TAIL_POINTS raw points for performance.
+   */
+  renderStrokeTail(points: RawPoint[]): StrokeSegment[] {
+    if (points.length < 2) return [];
+
+    // For short strokes, use full rendering
+    if (points.length <= TAIL_POINTS) {
+      return this.renderStroke(points);
+    }
+
+    // For long strokes, only process the tail
+    const tailPoints = points.slice(-TAIL_POINTS);
+
+    const { pressures } = simulatePressure(tailPoints);
+    const smoothedPressures = smoothPressure(pressures, this.config.smoothing);
+    const smoothedPoints = this.catmullRomSmoothing(tailPoints);
 
     const segments: StrokeSegment[] = [];
 
@@ -109,8 +157,7 @@ export class StrokeRenderer {
     return minWidth + (maxWidth - minWidth) * pressure;
   }
 
-  drawSegment(ctx: CanvasRenderingContext2D, segment: StrokeSegment): void {
-    const steps = 20;
+  drawSegment(ctx: CanvasRenderingContext2D, segment: StrokeSegment, steps = 20): void {
     const outline: { top: [number, number][]; bottom: [number, number][] } = { top: [], bottom: [] };
 
     for (let i = 0; i <= steps; i++) {
