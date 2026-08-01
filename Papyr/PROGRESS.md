@@ -87,6 +87,7 @@ Validate the drawing engine core technologies and deliver a world-class ink rend
 - No lag or stuttering
 - **Long continuous strokes without slowdown**
 - **Immediate visual feedback on every pointer event**
+- **Black ink on white canvas**
 
 ### What's Ready for Sprint 1
 - Solid foundation for features
@@ -95,12 +96,38 @@ Validate the drawing engine core technologies and deliver a world-class ink rend
 - Zero latency achieved
 - **Stable performance at any stroke length**
 
-### Next Sprint (Sprint 1): UI Toolbar & Tool Selection
-See SPRINT_1.md for details:
-- Color picker
-- Eraser tool (point-based)
-- Stroke customization
-- Feature-complete toolbar
+---
+
+## Sprint 1: Foundation - User Auth, Books, Pages & Tables - IN PROGRESS 🚀
+
+### Sprint Goal
+Implement the core foundation features for Papyr: user authentication, book management, page management, and basic table creation. This transforms Papyr from a drawing canvas into a functional digital ledger.
+
+### Current Branch: `feature/sprint-1-foundation` (from `develop`)
+
+### Prerequisites (ALL MET ✅)
+- [x] Sprint 0 complete: Drawing engine functional and stable
+- [x] Zero-latency rendering engine complete (<16ms latency)
+- [x] Stroke data model with pressure simulation
+- [x] Undo/redo state management fixed
+- [x] Black ink on white canvas working correctly
+- [x] Supabase connection configured
+
+### Next Task: T101 - User Authentication System
+**Status**: TODO | **Priority**: High | **Estimate**: 8h
+
+### Sprint 1 Deliverables
+- [ ] T101: User authentication system (sign up, login, logout, profile)
+- [ ] T102: Book creation and listing (CRUD operations)
+- [ ] T103: Page management within books (add, remove, reorder)
+- [ ] T104: Basic table creation on pages (customizable rows/columns)
+- [ ] T105: Responsive layout implementation (mobile, tablet, desktop)
+
+### Branch Strategy
+- **Feature Branch**: `feature/sprint-1-foundation` (from `develop`)
+- **PR Target**: `develop`
+- **CI Checks**: Build, lint, type-check, tests must pass
+- **Merge**: Squash and merge after approval
 
 ### Notes
-Sprint 0 exceeded expectations. Premium ink quality achieved at parity with industry leaders. Critical performance bugs fixed ensuring stable 60+ FPS even during long continuous strokes. Ready to begin Sprint 1 with confidence.
+Sprint 0 exceeded expectations. Premium ink quality achieved at parity with industry leaders. Critical performance bugs fixed ensuring stable 60+ FPS even during long continuous strokes. Skipping toolbar sprint per user request - moving directly to Foundation sprint to build the core ledger functionality.
