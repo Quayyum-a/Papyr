@@ -62,7 +62,11 @@ export default function Home() {
     }
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.95;
     ctx.stroke();
+    ctx.globalAlpha = 1.0;
   };
 
   const redrawCanvas = () => {
@@ -78,10 +82,9 @@ export default function Home() {
     });
     // Draw current stroke if exists
     if (points.length > 0) {
-      // Calculate average pressure for current points
       const avgPressure =
         points.reduce((sum, p) => sum + (p.pressure ?? 0.5), 0) / points.length;
-      const width = 0.5 + avgPressure * 2.5; // maps [0,1] to [0.5, 3.0]
+      const width = 2 + avgPressure * 1.5;
       drawStroke(ctx, points, width);
     }
   };
@@ -134,7 +137,7 @@ export default function Home() {
       // Calculate average pressure
       const avgPressure =
         points.reduce((sum, p) => sum + (p.pressure ?? 0.5), 0) / points.length;
-      const width = 0.5 + avgPressure * 2.5; // maps [0,1] to [0.5, 3.0]
+      const width = 2 + avgPressure * 1.5;
       // Create a stroke from the points
       const stroke: Stroke = {
         id: uuidv4(),
@@ -159,48 +162,48 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col">
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4 flex items-center gap-4 border-b border-gray-200">
+    <div className="fixed inset-0 bg-white flex flex-col">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md px-4 py-3 flex items-center gap-3 border-b border-gray-200 h-20 sm:h-24">
         <Image
           src="/favicon.png"
           alt="Papyr Logo"
-          width={56}
-          height={56}
-          className="rounded-lg"
+          width={48}
+          height={48}
+          className="rounded-lg w-10 h-10 sm:w-12 sm:h-12"
         />
-        <h1 className="text-4xl font-bold text-gray-900">
+        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">
           Papyr
         </h1>
       </div>
-      <div className="mt-20 flex-1 flex flex-col p-4">
+      <div className="mt-20 sm:mt-24 flex-1 flex flex-col overflow-hidden">
       <div
-        className="relative flex-1 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden"
+        className="relative flex-1 border-0 overflow-hidden bg-white touch-none"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onPointerCancel={handlePointerLeave}
       >
-        <canvas ref={canvasRef} className="w-full h-full cursor-crosshair" />
+        <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
         {!canUndo && !canRedo && strokes.length === 0 && points.length === 0 ? (
           <p className="absolute inset-0 flex items-center justify-center text-gray-500">
             Draw with mouse, touch, or pen to test the drawing engine
           </p>
         ) : null}
-        <div className="absolute top-2 right-2 flex gap-2">
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 flex gap-2">
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            className="px-2 py-1 sm:px-3 sm:py-1 text-xs sm:text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition-colors"
           >
-            Undo (Ctrl+Z)
+            ↶ Undo
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            className="px-2 py-1 sm:px-3 sm:py-1 text-xs sm:text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition-colors"
           >
-            Redo (Ctrl+Y)
+            ↷ Redo
           </button>
         </div>
       </div>

@@ -23,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.className}>
-      <body>{children}</body>
+      <body className="m-0 p-0 overflow-hidden">{children}</body>
     </html>
   );
 }
