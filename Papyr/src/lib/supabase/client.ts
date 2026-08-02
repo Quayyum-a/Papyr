@@ -24,6 +24,8 @@ function createMockClient() {
       signUp: async () => ({ data: null, error: new Error('Supabase not configured') }),
       signInWithPassword: async () => ({ data: null, error: new Error('Supabase not configured') }),
       signOut: async () => ({ error: new Error('Supabase not configured') }),
+      resetPasswordForEmail: async () => ({ data: null, error: new Error('Supabase not configured') }),
+      updateUser: async () => ({ data: null, error: new Error('Supabase not configured') }),
     },
     from: () => mockQuery,
   };
