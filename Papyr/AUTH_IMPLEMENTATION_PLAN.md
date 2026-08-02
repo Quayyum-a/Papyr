@@ -65,7 +65,7 @@ The current authentication implementation has a solid foundation but lacks produ
 
 #### 1.1 Environment & Configuration
 - [ ] Add `NEXT_PUBLIC_APP_URL` to all environments
-- [ ] Add `SUPABASE_SERVICE_ROLE_KEY` for admin operations
+- [ ] Add `SUPABASE_SERVICE_ROLE_KEY` for admin operations (server-only, non-public secret, fail-closed when missing)
 - [ ] Create environment validation utility
 - [ ] Add URL detection utility (dev/preview/production)
 
