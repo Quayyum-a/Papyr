@@ -1,9 +1,14 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/auth/login/page": "app/auth/login/page.js",
+  "/auth/callback/route": "app/auth/callback/route.js",
+  "/auth/reset-password/page": "app/auth/reset-password/page.js",
   "/auth/signup/page": "app/auth/signup/page.js",
-  "/profile/page": "app/profile/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
+  "/canvas/page": "app/canvas/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/dashboard/books/[id]/canvas/page": "app/dashboard/books/[id]/canvas/page.js",
   "/page": "app/page.js",
-  "/canvas/page": "app/canvas/page.js"
+  "/dashboard/books/new/page": "app/dashboard/books/new/page.js",
+  "/dashboard/books/page": "app/dashboard/books/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/profile/page": "app/profile/page.js"
 }
