@@ -46,8 +46,13 @@ export function createAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return createMockClient();
+  // Server-only admin client: requires SUPABASE_SERVICE_ROLE_KEY (server-only secret)
+  // Fail-closed: throws error if service role key is missing instead of returning mock client
+  if (!supabaseUrl) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is required for admin client');
+  }
+  if (!supabaseServiceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for admin client. This secret must be configured in server environment only.');
   }
 
   return createClient(supabaseUrl, supabaseServiceKey, {
