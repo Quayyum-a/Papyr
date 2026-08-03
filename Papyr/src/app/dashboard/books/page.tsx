@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { Search, User } from 'lucide-react';
+import { PapyrLogo } from '@/components/PapyrLogo';
 
 interface Book {
   id: string;
@@ -141,12 +142,7 @@ export default function BooksPage() {
       <header className="bg-white shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-900 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">P</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Papyr</h1>
-            </div>
+            <PapyrLogo />
             <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <User className="w-6 h-6 text-gray-600" />
             </button>

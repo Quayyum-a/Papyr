@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
+import { PapyrLogo } from '@/components/PapyrLogo';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -31,15 +32,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm px-6 py-4 flex items-stretch gap-4 border-b border-gray-100 h-16 sm:h-20">
-        <Image
-          src="/favicon.png"
-          alt="Papyr Logo"
-          width={56}
-          height={56}
-          className="rounded-lg h-12 sm:h-14 flex-shrink-0"
-          style={{ width: 'auto' }}
-        />
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Papyr</h1>
+        <PapyrLogo />
       </header>
 
       <main className="mt-16 sm:mt-20 flex-1 flex flex-col items-center justify-center px-4 py-12">

@@ -11,6 +11,10 @@ vi.mock('@/context/AuthContext', () => ({
   }),
 }));
 
+vi.mock('@/components/PapyrLogo', () => ({
+  PapyrLogo: () => <div data-testid="papyr-logo">Papyr Logo</div>,
+}));
+
 describe('SignUpForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,5 +81,22 @@ describe('SignUpForm', () => {
     const { container } = render(<SignUpForm />);
     const form = container.querySelector('form');
     expect(form).toBeInTheDocument();
+  });
+
+  it('renders Papyr logo', () => {
+    render(<SignUpForm />);
+    expect(screen.getByTestId('papyr-logo')).toBeInTheDocument();
+  });
+
+  it('has right-side image area (hidden on mobile)', () => {
+    const { container } = render(<SignUpForm />);
+    const rightSide = container.querySelector('.hidden.lg\\:flex');
+    expect(rightSide).toBeInTheDocument();
+  });
+
+  it('uses two-column layout on large screens', () => {
+    const { container } = render(<SignUpForm />);
+    const wrapper = container.querySelector('.lg\\:flex-row');
+    expect(wrapper).toBeInTheDocument();
   });
 });

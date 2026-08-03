@@ -11,6 +11,10 @@ vi.mock('@/context/AuthContext', () => ({
   }),
 }));
 
+vi.mock('@/components/PapyrLogo', () => ({
+  PapyrLogo: () => <div data-testid="papyr-logo">Papyr Logo</div>,
+}));
+
 describe('LoginForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -72,5 +76,29 @@ describe('LoginForm', () => {
     const passwordLabel = screen.getByLabelText(/Password/i);
     expect(emailLabel).toBeVisible();
     expect(passwordLabel).toBeVisible();
+  });
+
+  it('renders Papyr logo', () => {
+    render(<LoginForm />);
+    expect(screen.getByTestId('papyr-logo')).toBeInTheDocument();
+  });
+
+  it('renders sign-up link for new users', async () => {
+    render(<LoginForm />);
+    const signUpLink = await screen.findByRole('link', { name: /Create an account/i });
+    expect(signUpLink).toBeInTheDocument();
+    expect(signUpLink).toHaveAttribute('href', '/auth/signup');
+  });
+
+  it('has right-side image area (hidden on mobile)', () => {
+    const { container } = render(<LoginForm />);
+    const rightSide = container.querySelector('.hidden.lg\\:flex');
+    expect(rightSide).toBeInTheDocument();
+  });
+
+  it('uses two-column layout on large screens', () => {
+    const { container } = render(<LoginForm />);
+    const wrapper = container.querySelector('.lg\\:flex-row');
+    expect(wrapper).toBeInTheDocument();
   });
 });
