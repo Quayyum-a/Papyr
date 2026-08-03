@@ -1,24 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import LandingPage from './page';
 
-// Mock PapyrLogo component to avoid useAuth dependency
-vi.mock('@/components/PapyrLogo', () => ({
-  PapyrLogo: vi.fn(({ className, showText, href }) => (
-    <a href={href || '/'} className={className} data-testid="papyr-logo">
-      <span data-testid="papyr-logo-icon">Logo</span>
-      <span data-testid="papyr-logo-text">Papyr</span>
-    </a>
-  )),
-}));
-
-// Mock useAuth hook
+// Mock the AuthContext to provide a mock useAuth
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: null,
     loading: false,
   }),
-});
+}));
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -39,6 +28,20 @@ vi.mock('next/image', () => ({
   default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />,
 });
 
+// Mock the PapyrLogo component to avoid useAuth dependency
+vi.mock('@/components/PapyrLogo', () => ({
+  PapyrLogo: vi.fn(({ className, showText, href }) => (
+    <a href={href || '/'} className={className} data-testid="papyr-logo">
+      <span data-testid="papyr-logo-icon">Logo</span>
+      <span data-testid="papyr-logo-text">Papyr</span>
+    </a>
+  )),
+});
+
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import LandingPage from './page';
+
 describe('LandingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,35 +55,34 @@ describe('LandingPage', () => {
       })).toBeVisible();
     });
 
-    it('renders the description text', () => {
+    it('should render the description text', () => {
       render(<LandingPage />);
       expect(screen.getByText(/Papyr provides a secure, structured digital canvas/i)).toBeInTheDocument();
     });
 
-    it('renders sign in button', () => {
+    it('should render sign in button', () => {
       render(<LandingPage />);
       expect(screen.getByRole('link', { name: /Log in to Your Books/i })).toBeVisible();
     });
 
-    it('renders signup button with correct label', () => {
+    it('should render signup button with correct label', () => {
       render(<LandingPage />);
       expect(screen.getByRole('link', { name: /Start Your Digital Ledger/i })).toBeVisible();
     });
 
-    it('renders logo', () => {
+    it('should render logo', () => {
       render(<LandingPage />);
       expect(screen.getByAltText('Papyr Logo')).toBeVisible();
     });
 
-    it('renders signup link', () => {
+    it('should render signup link', () => {
       render(<LandingPage />);
       expect(screen.getByRole('link', { name: /create one/i })).toBeVisible();
     });
   });
 
   describe('Form Validation', () => {
-    // Note: LandingPage doesn't have a form, these tests are for reference
-    it('renders without errors', () => {
+    it('should render without errors', () => {
       render(<LandingPage />);
       expect(screen.getByText('Your traditional ledger, evolved into a digital handwritten record')).toBeInTheDocument();
     });
@@ -98,9 +100,7 @@ describe('LandingPage', () => {
     });
 
     it('should have error alert role for error messages', async () => {
-      // This test would require mocking auth error state
       render(<LandingPage />);
-      // No error state in default render
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
