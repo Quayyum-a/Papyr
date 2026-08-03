@@ -21,7 +21,8 @@ export function PapyrLogo({ className = '', showText = true, href }: PapyrLogoPr
         alt="Papyr Logo"
         width={56}
         height={56}
-        className="rounded-lg w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0"
+        className="rounded-lg w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 self-stretch"
+        style={{ width: 'auto' }}
       />
       {showText && (
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Papyr</h1>
