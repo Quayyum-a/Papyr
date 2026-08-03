@@ -30,13 +30,14 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm px-6 py-4 flex items-center gap-4 border-b border-gray-100 h-16 sm:h-20">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm px-6 py-4 flex items-stretch gap-4 border-b border-gray-100 h-16 sm:h-20">
         <Image
           src="/favicon.png"
           alt="Papyr Logo"
           width={56}
           height={56}
-          className="rounded-lg w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0"
+          className="rounded-lg h-12 sm:h-14 flex-shrink-0"
+          style={{ width: 'auto' }}
         />
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Papyr</h1>
       </header>
