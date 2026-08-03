@@ -73,14 +73,6 @@ export default function DashboardPage() {
               Create Book →
             </a>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Drawing Canvas</h3>
-            <p className="text-gray-600 mb-4">Access canvas from within a book</p>
-            <a href="/dashboard/books" className="text-blue-600 hover:text-blue-700 font-medium">
-              View Books →
-            </a>
-          </div>
         </div>
       </main>
     </div>

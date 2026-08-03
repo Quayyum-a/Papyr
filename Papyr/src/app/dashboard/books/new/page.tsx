@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase/client';
 
 const COVER_COLORS = [
   { value: '#3B82F6', label: 'Blue' },
@@ -36,7 +37,7 @@ export default function NewBookPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-3 border-blue-600 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent"></div>
       </div>
     );
   }
@@ -47,33 +48,36 @@ export default function NewBookPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     if (!title.trim()) {
-      alert('Title is required');
+      setError('Title is required');
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
     try {
-      // TODO: Implement actual Supabase book creation
-      // For now, mock the creation
-      const newBook = {
-        id: Date.now().toString(),
-        title: title.trim(),
-        description: description.trim(),
-        cover_color: coverColor,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      const { data, error: insertError } = await supabase
+        .from('books')
+        .insert({
+          title: title.trim(),
+          description: description.trim(),
+          cover_color: coverColor,
+          user_id: user.id,
+        })
+        .select()
+        .single();
 
-      console.log('New book created:', newBook);
-      alert('Book created successfully!');
+      if (insertError) {
+        throw insertError;
+      }
+
+      console.log('New book created:', data);
       router.push('/dashboard/books');
     } catch (err) {
       console.error('Failed to create book:', err);
-      alert('Failed to create book. Please try again.');
+      setError('Failed to create book. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -153,10 +157,10 @@ export default function NewBookPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <fieldset className="space-y-2">
+              <legend className="block text-sm font-medium text-gray-700 mb-2">
                 Cover Color
-              </label>
+              </legend>
               <div className="grid grid-cols-4 gap-3">
                 {COVER_COLORS.map((color) => (
                   <button
@@ -190,7 +194,7 @@ export default function NewBookPage() {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
           </div>
 
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-100">

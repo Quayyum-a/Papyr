@@ -28,6 +28,26 @@ export default function BooksPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
+  const formatRelativeTime = (dateString: string): string => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffDays > 0) {
+      return `${diffDays}d ago`;
+    }
+    if (diffHours > 0) {
+      return `${diffHours}h ago`;
+    }
+    if (diffMinutes > 0) {
+      return `${diffMinutes}m ago`;
+    }
+    return 'just now';
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/login');
@@ -43,14 +63,15 @@ export default function BooksPage() {
   const fetchBooks = async () => {
     setLoading(true);
     try {
+      const now = new Date();
       const mockBooks = [
         {
           id: '1',
           title: 'Repair Log: Speedy Wrench',
           description: 'Graphite (#959B5F)',
           cover_color: '#8B7355',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-11-20T10:00:00Z',
+          created_at: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
           page_count: 45,
         },
         {
@@ -58,8 +79,8 @@ export default function BooksPage() {
           title: 'Client Ledger: Beauty Salon',
           description: 'Graphite (#959B5F)',
           cover_color: '#A09070',
-          created_at: '2024-03-20T10:00:00Z',
-          updated_at: '2024-11-20T14:30:00Z',
+          created_at: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
           page_count: 45,
         },
         {
@@ -67,8 +88,8 @@ export default function BooksPage() {
           title: 'Inventory Stock: Gadget Corner',
           description: 'Graphite (#959B5F)',
           cover_color: '#B8A89C',
-          created_at: '2024-06-10T09:00:00Z',
-          updated_at: '2024-11-20T16:45:00Z',
+          created_at: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
           page_count: 45,
         },
         {
@@ -76,8 +97,8 @@ export default function BooksPage() {
           title: 'Consumables Log: Neighborhood Store',
           description: 'Graphite (#959B5F)',
           cover_color: '#A0C4A8',
-          created_at: '2024-02-05T08:00:00Z',
-          updated_at: '2024-11-20T09:15:00Z',
+          created_at: new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString(),
           page_count: 45,
         },
         {
@@ -85,8 +106,8 @@ export default function BooksPage() {
           title: 'Consumables Log: Neighborhood Store',
           description: 'Graphite (#959B5F)',
           cover_color: '#D4A574',
-          created_at: '2024-05-12T11:00:00Z',
-          updated_at: '2024-11-19T13:45:00Z',
+          created_at: new Date(now.getTime() - 75 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
           page_count: 45,
         },
         {
@@ -94,8 +115,8 @@ export default function BooksPage() {
           title: 'Electronics Trade: Parts',
           description: 'Graphite (#959B5F)',
           cover_color: '#7CA89F',
-          created_at: '2024-04-18T14:00:00Z',
-          updated_at: '2024-11-19T15:30:00Z',
+          created_at: new Date(now.getTime() - 55 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
           page_count: 45,
         },
         {
@@ -103,8 +124,8 @@ export default function BooksPage() {
           title: 'Mechanic Jobs: Daily',
           description: 'Graphite (#959B5F)',
           cover_color: '#9CB4A0',
-          created_at: '2024-07-22T10:30:00Z',
-          updated_at: '2024-11-18T11:20:00Z',
+          created_at: new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
           page_count: 45,
         },
       ];
@@ -132,7 +153,7 @@ export default function BooksPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-3 border-slate-900 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-900 border-t-transparent"></div>
       </div>
     );
   }
@@ -163,6 +184,7 @@ export default function BooksPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                aria-label="Search books"
               />
             </div>
             <button
@@ -243,7 +265,7 @@ export default function BooksPage() {
                 )}
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>{book.page_count} Pages</span>
-                  <span>Last Updated: 2d ago</span>
+                  <span>Last Updated: {formatRelativeTime(book.updated_at)}</span>
                 </div>
               </Link>
             ))}

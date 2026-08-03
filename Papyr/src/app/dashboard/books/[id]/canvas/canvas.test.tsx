@@ -23,6 +23,10 @@ vi.mock('@/hooks/useInkEngine', () => ({
   }),
 }));
 
+vi.mock('@/components/PapyrLogo', () => ({
+  PapyrLogo: () => <div data-testid="papyr-logo">Papyr</div>,
+}));
+
 vi.mock('next/navigation', () => ({
   useParams: () => ({
     id: 'test-book-id',
@@ -35,8 +39,8 @@ describe('BookCanvasPage', () => {
   });
 
   it('renders the canvas element', () => {
-    render(<BookCanvasPage />);
-    const canvas = screen.getByRole('img', { hidden: true });
+    const { container } = render(<BookCanvasPage />);
+    const canvas = container.querySelector('canvas');
     expect(canvas).toBeInTheDocument();
   });
 
@@ -48,20 +52,22 @@ describe('BookCanvasPage', () => {
 
   it('renders Papyr title', () => {
     render(<BookCanvasPage />);
-    const title = screen.getByRole('heading', { name: /Papyr/i });
+    const title = screen.getByTestId('papyr-logo');
     expect(title).toBeInTheDocument();
   });
 
   it('renders pen size buttons', () => {
     render(<BookCanvasPage />);
-    expect(screen.getByRole('button', { name: /small/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /medium/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /large/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^extra-fine$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^fine$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^medium$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^bold$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^marker$/i })).toBeInTheDocument();
   });
 
   it('renders color picker input', () => {
-    render(<BookCanvasPage />);
-    const colorPicker = screen.getByRole('img', { hidden: true });
+    const { container } = render(<BookCanvasPage />);
+    const colorPicker = container.querySelector('input[type="color"]');
     expect(colorPicker).toBeInTheDocument();
   });
 
@@ -91,7 +97,7 @@ describe('BookCanvasPage', () => {
 
   it('has proper header structure', () => {
     const { container } = render(<BookCanvasPage />);
-    const header = container.querySelector('div[class*="fixed top-0"]');
+    const header = container.querySelector('div[class*="fixed"][class*="top-0"]') || container.querySelector('.fixed.top-0');
     expect(header).toBeInTheDocument();
     expect(header).toHaveClass('z-50');
   });
