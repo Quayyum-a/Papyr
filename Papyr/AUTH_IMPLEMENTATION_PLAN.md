@@ -64,8 +64,6 @@ The current authentication implementation has a solid foundation but lacks produ
 ### Phase 1: Core Authentication Infrastructure (Week 1)
 
 #### 1.1 Environment & Configuration
-- [ ] Add `NEXT_PUBLIC_APP_URL` to all environments
-- [ ] Add `SUPABASE_SERVICE_ROLE_KEY` for admin operations
 - [ ] Create environment validation utility
 - [ ] Add URL detection utility (dev/preview/production)
 
