@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image';
 import Link from 'next/link';
+import { Search, User } from 'lucide-react';
 
 interface Book {
   id: string;
@@ -16,12 +16,16 @@ interface Book {
   page_count: number;
 }
 
+type FilterTab = 'all' | 'recent';
+
 export default function BooksPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -38,35 +42,69 @@ export default function BooksPage() {
   const fetchBooks = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual Supabase query
-      // For now, mock data
       const mockBooks = [
         {
           id: '1',
-          title: 'Business Ledger 2024',
-          description: 'Main business ledger for 2024',
-          cover_color: '#3B82F6',
+          title: 'Repair Log: Speedy Wrench',
+          description: 'Graphite (#959B5F)',
+          cover_color: '#8B7355',
           created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-12-01T10:00:00Z',
+          updated_at: '2024-11-20T10:00:00Z',
           page_count: 45,
         },
         {
           id: '2',
-          title: 'Client Meetings',
-          description: 'Client meeting notes and action items',
-          cover_color: '#10B981',
+          title: 'Client Ledger: Beauty Salon',
+          description: 'Graphite (#959B5F)',
+          cover_color: '#A09070',
           created_at: '2024-03-20T10:00:00Z',
-          updated_at: '2024-11-15T14:30:00Z',
-          page_count: 12,
+          updated_at: '2024-11-20T14:30:00Z',
+          page_count: 45,
         },
         {
           id: '3',
-          title: 'Inventory Log',
-          description: 'Inventory tracking and stock levels',
-          cover_color: '#F59E0B',
+          title: 'Inventory Stock: Gadget Corner',
+          description: 'Graphite (#959B5F)',
+          cover_color: '#B8A89C',
           created_at: '2024-06-10T09:00:00Z',
-          updated_at: '2024-11-28T16:45:00Z',
-          page_count: 28,
+          updated_at: '2024-11-20T16:45:00Z',
+          page_count: 45,
+        },
+        {
+          id: '4',
+          title: 'Consumables Log: Neighborhood Store',
+          description: 'Graphite (#959B5F)',
+          cover_color: '#A0C4A8',
+          created_at: '2024-02-05T08:00:00Z',
+          updated_at: '2024-11-20T09:15:00Z',
+          page_count: 45,
+        },
+        {
+          id: '5',
+          title: 'Consumables Log: Neighborhood Store',
+          description: 'Graphite (#959B5F)',
+          cover_color: '#D4A574',
+          created_at: '2024-05-12T11:00:00Z',
+          updated_at: '2024-11-19T13:45:00Z',
+          page_count: 45,
+        },
+        {
+          id: '6',
+          title: 'Electronics Trade: Parts',
+          description: 'Graphite (#959B5F)',
+          cover_color: '#7CA89F',
+          created_at: '2024-04-18T14:00:00Z',
+          updated_at: '2024-11-19T15:30:00Z',
+          page_count: 45,
+        },
+        {
+          id: '7',
+          title: 'Mechanic Jobs: Daily',
+          description: 'Graphite (#959B5F)',
+          cover_color: '#9CB4A0',
+          created_at: '2024-07-22T10:30:00Z',
+          updated_at: '2024-11-18T11:20:00Z',
+          page_count: 45,
         },
       ];
       setBooks(mockBooks);
@@ -77,16 +115,23 @@ export default function BooksPage() {
     }
   };
 
-  const handleCreateBook = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement book creation
-    router.push('/dashboard/books/new');
-  };
+  const filteredBooks = books.filter((book) => {
+    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (book.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+    
+    if (activeFilter === 'recent') {
+      const now = new Date();
+      const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+      return matchesSearch && new Date(book.updated_at) > twoDaysAgo;
+    }
+    
+    return matchesSearch;
+  });
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-3 border-blue-600 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-3 border-slate-900 border-t-transparent"></div>
       </div>
     );
   }
@@ -95,77 +140,114 @@ export default function BooksPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Papyr</h1>
+          <div className="flex justify-between items-center h-16 sm:h-20">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-900 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">P</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Papyr</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Your Books</span>
-            </div>
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <User className="w-6 h-6 text-gray-600" />
+            </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Your Books</h2>
-            <p className="mt-1 text-gray-600">Manage your digital ledgers</p>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">My Books</h2>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+              />
+            </div>
+            <button
+              onClick={() => router.push('/dashboard/books/new')}
+              className="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors whitespace-nowrap"
+            >
+              New Book
+            </button>
           </div>
-          <button
-            onClick={() => router.push('/dashboard/books/new')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-          >
-            Create New Book
-          </button>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`text-sm font-medium pb-2 border-b-2 transition-colors ${
+                activeFilter === 'all'
+                  ? 'text-gray-900 border-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-900'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setActiveFilter('recent')}
+              className={`text-sm font-medium pb-2 border-b-2 transition-colors ${
+                activeFilter === 'recent'
+                  ? 'text-gray-900 border-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-900'
+              }`}
+            >
+              Recent
+            </button>
+          </div>
         </div>
 
-        {books.length === 0 ? (
+        {filteredBooks.length === 0 ? (
           <div className="text-center py-16">
             <svg className="mx-auto h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253v-13Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0Z" />
             </svg>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No books yet</h3>
-            <p className="mt-2 text-gray-500">Create your first digital ledger to get started</p>
-            <button
-              onClick={() => router.push('/dashboard/books/new')}
-              className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Create Your First Book
-            </button>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              {searchQuery ? 'No books found' : 'No books yet'}
+            </h3>
+            <p className="mt-2 text-gray-500">
+              {searchQuery ? 'Try a different search' : 'Create your first digital ledger to get started'}
+            </p>
+            {!searchQuery && (
+              <button
+                onClick={() => router.push('/dashboard/books/new')}
+                className="mt-6 px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
+              >
+                Create Your First Book
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {books.map((book) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {filteredBooks.map((book) => (
               <Link
                 key={book.id}
                 href={`/dashboard/books/${book.id}/canvas`}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow overflow-hidden group"
               >
-                <div className="flex items-center space-x-4 mb-4">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: book.cover_color }}
-                  >
-                    <span className="text-2xl font-bold text-white">
-                      {book.title.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">
-                      {book.title}
-                    </h3>
-                    {book.description && (
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                        {book.description}
-                      </p>
-                    )}
-                  </div>
+                <div
+                  className="w-full h-24 rounded-md mb-3 flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: book.cover_color }}
+                >
+                  <span className="text-3xl font-bold text-white opacity-30">
+                    {book.title.charAt(0).toUpperCase()}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>{book.page_count} pages</span>
-                  <span>Updated {new Date(book.updated_at).toLocaleDateString()}</span>
+                <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">
+                  {book.title}
+                </h3>
+                {book.description && (
+                  <p className="text-xs text-gray-500 line-clamp-1 mb-3">
+                    {book.description}
+                  </p>
+                )}
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{book.page_count} Pages</span>
+                  <span>Last Updated: 2d ago</span>
                 </div>
               </Link>
             ))}
