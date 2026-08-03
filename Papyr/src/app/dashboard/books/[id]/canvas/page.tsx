@@ -9,6 +9,8 @@ import type { RawPoint, PenSize, Stroke } from '@/lib/ink-engine/types';
 import { PEN_CONFIGS } from '@/lib/ink-engine/types';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { PapyrLogo } from '@/components/PapyrLogo';
 
 export default function BookCanvasPage() {
   const params = useParams();
@@ -243,7 +245,8 @@ export default function BookCanvasPage() {
           </svg>
           <span className="text-sm font-medium">Back to Books</span>
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Papyr</h1>
+        <div className="flex-1" />
+        <PapyrLogo href="/dashboard/books" showText={false} />
       </div>
 
       <div className="mt-16 sm:mt-20 flex-1 flex flex-col overflow-hidden">
