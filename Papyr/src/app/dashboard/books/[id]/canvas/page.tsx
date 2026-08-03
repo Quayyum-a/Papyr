@@ -9,6 +9,7 @@ import type { RawPoint, PenSize, Stroke } from '@/lib/ink-engine/types';
 import { PEN_CONFIGS } from '@/lib/ink-engine/types';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
 
 export default function BookCanvasPage() {
   const params = useParams();
