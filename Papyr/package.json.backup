@@ -1,0 +1,57 @@
+{
+  "name": "papyr",
+  "version": "1.0.0",
+  "description": "Papyr is an offline-first handwritten digital ledger designed to replace physical notebooks for small businesses. It combines the natural simplicity of paper with the reliability and accessibility of digital storage.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.111.0",
+    "lucide-react": "^1.28.0",
+    "next": "^14.2.5",
+    "perfect-freehand": "^1.2.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "server-only": "^0.0.1",
+    "typescript": "^5.4.5",
+    "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "autoprefixer": "^10.4.19",
+<<<<<<< HEAD
+    "canvas": "^3.2.3",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+=======
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
+>>>>>>> main
+    "jsdom": "^29.1.1",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vitest": "^4.1.10"
+  }
+}
