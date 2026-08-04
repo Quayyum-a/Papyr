@@ -1,4 +1,5 @@
 // Server-side Supabase Client (for Server Components)
+import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 
 function createMockClient() {
