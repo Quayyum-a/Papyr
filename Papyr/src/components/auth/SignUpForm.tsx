@@ -2,17 +2,27 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { MailCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { PapyrLogo } from '@/components/PapyrLogo';
+import { Modal } from '@/components/ui/Modal';
 
 export function SignUpForm() {
+  const router = useRouter();
   const { signUp, loading, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+
+  const closeVerificationModal = () => {
+    setShowVerificationModal(false);
+    router.push('/auth/login');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +44,7 @@ export function SignUpForm() {
 
     if (!error) {
       if (requiresVerification) {
-        alert('Account created! Please check your email to verify your account before signing in.');
-        window.location.href = '/auth/login';
+        setShowVerificationModal(true);
       } else {
         window.location.href = '/dashboard';
       }
@@ -225,6 +234,25 @@ export function SignUpForm() {
           </svg>
         </div>
       </div>
+
+      <Modal open={showVerificationModal} onClose={closeVerificationModal} ariaLabel="Email verification required">
+        <div className="text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+            <MailCheck className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <h2 className="mt-4 text-2xl font-bold text-gray-900">Check your inbox, {displayName || 'there'}.</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            We sent a verification email to <span className="font-medium text-gray-900">{email}</span>. Verify your email before signing in.
+          </p>
+          <button
+            type="button"
+            onClick={closeVerificationModal}
+            className="mt-6 w-full bg-slate-900 px-4 py-3 font-medium text-white rounded-full transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+          >
+            Go to login
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

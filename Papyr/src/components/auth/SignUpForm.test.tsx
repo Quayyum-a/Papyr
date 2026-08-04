@@ -1,14 +1,23 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SignUpForm } from './SignUpForm';
+
+const { signUp, push } = vi.hoisted(() => ({
+  signUp: vi.fn(),
+  push: vi.fn(),
+}));
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: null,
     loading: false,
     error: null,
-    signUp: vi.fn().mockResolvedValue({ error: null, requiresVerification: false }),
+    signUp,
   }),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
 }));
 
 vi.mock('@/components/PapyrLogo', () => ({
@@ -18,6 +27,11 @@ vi.mock('@/components/PapyrLogo', () => ({
 describe('SignUpForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    signUp.mockResolvedValue({ error: null, requiresVerification: false });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders signup form with correct heading', () => {
@@ -98,5 +112,46 @@ describe('SignUpForm', () => {
     const { container } = render(<SignUpForm />);
     const wrapper = container.querySelector('.lg\\:flex-row');
     expect(wrapper).toBeInTheDocument();
+  });
+
+  const submitVerificationSignup = async () => {
+    fireEvent.change(screen.getByLabelText(/Display name/i), { target: { value: 'Ariyo' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'ariyo@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText(/Confirm password/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
+
+    await waitFor(() => expect(signUp).toHaveBeenCalledWith('ariyo@example.com', 'password123', 'Ariyo'));
+  };
+
+  it('does not call window.alert when verification is required', async () => {
+    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    render(<SignUpForm />);
+
+    await submitVerificationSignup();
+
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it('shows a personalized verification dialog', async () => {
+    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+    render(<SignUpForm />);
+
+    await submitVerificationSignup();
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Ariyo');
+    expect(dialog).toHaveTextContent('ariyo@example.com');
+  });
+
+  it('navigates to login when the verification modal primary action is clicked', async () => {
+    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+    render(<SignUpForm />);
+
+    await submitVerificationSignup();
+    fireEvent.click(await screen.findByRole('button', { name: /go to login/i }));
+
+    expect(push).toHaveBeenCalledWith('/auth/login');
   });
 });
