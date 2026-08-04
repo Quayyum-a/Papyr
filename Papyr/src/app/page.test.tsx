@@ -26,7 +26,7 @@ vi.mock('next/link', () => ({
 // Mock next/image
 vi.mock('next/image', () => ({
   default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />,
-});
+}));
 
 // Mock the PapyrLogo component to avoid useAuth dependency
 vi.mock('@/components/PapyrLogo', () => ({
@@ -36,10 +36,8 @@ vi.mock('@/components/PapyrLogo', () => ({
       <span data-testid="papyr-logo-text">Papyr</span>
     </a>
   )),
-});
+}));
 
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import LandingPage from './page';
 
 describe('LandingPage', () => {

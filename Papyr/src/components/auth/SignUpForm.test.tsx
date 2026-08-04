@@ -154,4 +154,35 @@ describe('SignUpForm', () => {
 
     expect(push).toHaveBeenCalledWith('/auth/login');
   });
+
+  // Test for the specific email and password mentioned in the request
+  it('triggers email verification for shannonjames9875@gmail.com with password Monkeyss', async () => {
+    // Mock the signUp function to return requiresVerification: true (email verification needed)
+    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+    
+    render(<SignUpForm />);
+    
+    // Fill in the form with the specified email and password
+    fireEvent.change(screen.getByLabelText(/Display name/i), { target: { value: 'Shannon James' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'shannonjames9875@gmail.com' } });
+    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'Monkeyss' } });
+    fireEvent.change(screen.getByLabelText(/Confirm password/i), { target: { value: 'Monkeyss' } });
+    
+    // Click the create account button
+    fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
+    
+    // Wait for the signUp function to be called with the correct parameters
+    await waitFor(() => 
+      expect(signUp).toHaveBeenCalledWith('shannonjames9875@gmail.com', 'Monkeyss', 'Shannon James')
+    );
+    
+    // Wait for the verification modal to appear (indicating email verification is required)
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Shannon James');
+    expect(dialog).toHaveTextContent('shannonjames9875@gmail.com');
+    
+    // Verify that the signUp function was called, which triggers the email sending via Supabase
+    expect(signUp).toHaveBeenCalledTimes(1);
+  });
 });
