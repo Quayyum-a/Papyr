@@ -36,6 +36,7 @@ export default function BookCanvasPage() {
     isDrawing: false,
     lastRenderedStrokeCount: 0,
     renderedSegmentCount: 0,
+    activePointerId: null as number | null,
   });
 
   const strokesRef = useRef(strokes);
@@ -81,6 +82,7 @@ export default function BookCanvasPage() {
       offscreenCtx.imageSmoothingEnabled = true;
 
       clearCanvas();
+      stateRef.current.lastRenderedStrokeCount = 0;
     };
 
     const clearCanvas = () => {
@@ -89,6 +91,7 @@ export default function BookCanvasPage() {
       ctx.fillRect(0, 0, rect.width, rect.height);
       offscreenCtx.fillStyle = '#ffffff';
       offscreenCtx.fillRect(0, 0, rect.width, rect.height);
+      stateRef.current.lastRenderedStrokeCount = 0;
     };
 
     setupCanvas();
@@ -149,12 +152,14 @@ export default function BookCanvasPage() {
 
     const handleResize = () => setupCanvas();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === 'z') {
+      // Undo: Cmd/Ctrl + Z (without Shift)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
         stateRef.current.lastRenderedStrokeCount = 0;
       }
-      if (e.metaKey && e.shiftKey && e.key === 'z') {
+      // Redo: Cmd/Ctrl + Shift + Z
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') {
         e.preventDefault();
         redo();
         stateRef.current.lastRenderedStrokeCount = 0;
@@ -186,7 +191,18 @@ export default function BookCanvasPage() {
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // Ignore if another pointer is already drawing
+    if (stateRef.current.activePointerId !== null) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     stateRef.current.isDrawing = true;
+    stateRef.current.activePointerId = e.pointerId;
+
+    // Capture pointer for this element
+    canvas.setPointerCapture(e.pointerId);
+
     const coords = getCanvasCoords(e);
 
     stateRef.current.points = [
@@ -202,6 +218,8 @@ export default function BookCanvasPage() {
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    // Ignore events from other pointers
+    if (stateRef.current.activePointerId !== e.pointerId) return;
     if (!stateRef.current.isDrawing) return;
 
     const coords = getCanvasCoords(e);
@@ -215,14 +233,28 @@ export default function BookCanvasPage() {
     });
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
+    // Ignore events from other pointers
+    if (stateRef.current.activePointerId !== e.pointerId) return;
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignore if pointer capture was already released
+      }
+    }
+
     if (!stateRef.current.isDrawing || stateRef.current.points.length < 2) {
       stateRef.current.isDrawing = false;
       stateRef.current.points = [];
+      stateRef.current.activePointerId = null;
       return;
     }
 
     stateRef.current.isDrawing = false;
+    stateRef.current.activePointerId = null;
 
     const stroke = createStroke(stateRef.current.points);
     addStroke(stroke);
@@ -230,9 +262,12 @@ export default function BookCanvasPage() {
     stateRef.current.lastRenderedStrokeCount = 0;
   };
 
-  const handlePointerLeave = () => {
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    // Only handle leave for the active pointer
+    if (stateRef.current.activePointerId !== e.pointerId) return;
+
     if (stateRef.current.isDrawing) {
-      handlePointerUp();
+      handlePointerUp(e);
     }
   };
 
