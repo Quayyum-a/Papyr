@@ -2,17 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LoginForm } from './LoginForm';
 
-// Hoisted mock for stable signIn reference across renders
-const { signInMock } = vi.hoisted(() => ({
-  signInMock: vi.fn().mockResolvedValue({ error: null }),
-}));
-
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: null,
     loading: false,
     error: null,
-    signIn: signInMock,
+    signIn: vi.fn().mockResolvedValue({ error: null }),
   }),
 }));
 
@@ -45,7 +40,7 @@ describe('LoginForm', () => {
 
   it('renders sign in button', () => {
     render(<LoginForm />);
-    expect(screen.getByRole('button', { name: /^Sign in$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sign in/i })).toBeInTheDocument();
   });
 
   it('renders Google sign in button', () => {
@@ -71,7 +66,7 @@ describe('LoginForm', () => {
 
   it('disables submit button when loading', async () => {
     const { rerender } = render(<LoginForm />);
-    const submitButton = screen.getByRole('button', { name: /^Sign in$/i });
+    const submitButton = screen.getByRole('button', { name: /Sign in/i });
     expect(submitButton).not.toBeDisabled();
   });
 
