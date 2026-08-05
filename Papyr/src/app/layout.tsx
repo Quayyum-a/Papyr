@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/context/AuthContext';
+import SupportFooter from '@/components/SupportFooter';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,8 +25,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.className}>
-      <body className="m-0 p-0 overflow-hidden">
-        <AuthProvider>{children}</AuthProvider>
+      <body className="m-0 p-0">
+        <AuthProvider>
+          <div className="flex min-h-screen flex-col">
+            <main className="flex-1">
+              {children}
+            </main>
+            <SupportFooter />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

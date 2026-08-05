@@ -5,6 +5,7 @@ export interface Book {
   title: string;
   description: string | null;
   cover_color: string;
+  cover_theme: string;
   created_at: string;
   updated_at: string;
 }
@@ -13,6 +14,7 @@ export interface BookFormData {
   title: string;
   description: string;
   cover_color: string;
+  cover_theme: string;
 }
 
 export interface BookWithPageCount extends Book {
@@ -28,21 +30,29 @@ export interface CreateBookInput {
   title: string;
   description?: string;
   cover_color?: string;
+  cover_theme?: string;
 }
 
 export interface UpdateBookInput {
   title?: string;
   description?: string;
   cover_color?: string;
+  cover_theme?: string;
 }
 
-export const BOOK_COVER_COLORS = [
-  { value: '#3B82F6', label: 'Blue', preview: 'bg-blue-500' },
-  { value: '#EF4444', label: 'Red', preview: 'bg-red-500' },
-  { value: '#10B981', label: 'Green', preview: 'bg-green-500' },
-  { value: '#F59E0B', label: 'Amber', preview: 'bg-amber-500' },
-  { value: '#8B5CF6', label: 'Violet', preview: 'bg-violet-500' },
-  { value: '#EC4899', label: 'Pink', preview: 'bg-pink-500' },
-  { value: '#06B6D4', label: 'Cyan', preview: 'bg-cyan-500' },
-  { value: '#84CC16', label: 'Lime', preview: 'bg-lime-500' },
+export interface Theme {
+  name: string;
+  color: string;
+  accent: string;
+}
+
+export const THEMES: Theme[] = [
+  { name: 'Graphite', color: '#282a2c', accent: '#b8b8b5' },
+  { name: 'Sand', color: '#d7c6a5', accent: '#5e5447' },
+  { name: 'Forest', color: '#244534', accent: '#c2d3c5' },
+  { name: 'Ocean', color: '#254a5b', accent: '#c0d8df' },
+  { name: 'Slate', color: '#46515e', accent: '#d5d8dd' },
+  { name: 'Terracotta', color: '#a94d34', accent: '#f1d1c4' },
+  { name: 'Indigo', color: '#303553', accent: '#d5d7eb' },
+  { name: 'Emerald', color: '#1d6146', accent: '#cae8d8' },
 ];
