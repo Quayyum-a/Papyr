@@ -1,0 +1,169 @@
+diff --git a/Papyr/src/components/auth/SignUpForm.tsx b/Papyr/src/components/auth/SignUpForm.tsx
+index f90f16d..44c0eb7 100644
+--- a/Papyr/src/components/auth/SignUpForm.tsx
++++ b/Papyr/src/components/auth/SignUpForm.tsx
+@@ -2,17 +2,22 @@
+[L:2]  'use client';
+[L:3]  
+[L:4]  import { useState } from 'react';
+[L:5] +import { useRouter } from 'next/navigation';
+[L:6] +import { MailCheck } from 'lucide-react';
+[L:7/5]  import { useAuth } from '@/context/AuthContext';
+[L:8/6]  import Link from 'next/link';
+[L:9/7]  import { PapyrLogo } from '@/components/PapyrLogo';
+[L:10] +import { Modal } from '@/components/ui/Modal';
+[L:11/8]  
+[L:12/9]  export function SignUpForm() {
+[L:13] +  const router = useRouter();
+[L:14/10]    const { signUp, loading, error } = useAuth();
+[L:15/11]    const [email, setEmail] = useState('');
+[L:16/12]    const [password, setPassword] = useState('');
+[L:17/13]    const [confirmPassword, setConfirmPassword] = useState('');
+[L:18/14]    const [displayName, setDisplayName] = useState('');
+[L:19/15]    const [isLoading, setIsLoading] = useState(false);
+[L:20] +  const [showVerificationModal, setShowVerificationModal] = useState(false);
+[L:21/16]  
+[L:22/17]    const handleSubmit = async (e: React.FormEvent) => {
+[L:23/18]      e.preventDefault();
+@@ -34,10 +39,9 @@ export function SignUpForm() {
+[L:39/34]  
+[L:40/35]      if (!error) {
+[L:41/36]        if (requiresVerification) {
+[L:37] -        alert('Account created! Please check your email to verify your account before signing in.');
+[L:38] -        window.location.href = '/auth/login';
+[L:42] +        setShowVerificationModal(true);
+[L:43/39]        } else {
+[L:40] -        window.location.href = '/dashboard';
+[L:44] +        router.push('/dashboard');
+[L:45/41]        }
+[L:46/42]      }
+[L:47/43]    };
+@@ -225,6 +229,28 @@ export function SignUpForm() {
+[L:229/225]            </svg>
+[L:230/226]          </div>
+[L:231/227]        </div>
+[L:232] +
+[L:233] +      <Modal open={showVerificationModal} onClose={() => setShowVerificationModal(false)}>
+[L:234] +        <div className="text-center">
+[L:235] +          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+[L:236] +            <MailCheck className="h-6 w-6" aria-hidden="true" />
+[L:237] +          </div>
+[L:238] +          <h2 className="mt-4 text-2xl font-bold text-gray-900">Check your inbox, {displayName || 'there'}.</h2>
+[L:239] +          <p className="mt-2 text-sm text-gray-600">
+[L:240] +            We sent a verification email to <span className="font-medium text-gray-900">{email}</span>. Verify your email before signing in.
+[L:241] +          </p>
+[L:242] +          <button
+[L:243] +            type="button"
+[L:244] +            onClick={() => {
+[L:245] +              setShowVerificationModal(false);
+[L:246] +              router.push('/auth/login');
+[L:247] +            }}
+[L:248] +            className="mt-6 w-full bg-slate-900 px-4 py-3 font-medium text-white rounded-full transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+[L:249] +          >
+[L:250] +            Go to login
+[L:251] +          </button>
+[L:252] +        </div>
+[L:253] +      </Modal>
+[L:254/228]      </div>
+[L:255/229]    );
+[L:256/230]  }
+[L:257/231] 
+diff --git a/Papyr/TASKS.md b/Papyr/TASKS.md
+index 858e07d..91e1152 100644
+--- a/Papyr/TASKS.md
++++ b/Papyr/TASKS.md
+@@ -23,4 +23,5 @@
+[L:23]  | T102 | Book creation and listing | Allow users to create, view, list, and delete books | T101 | TODO | High | 6h | AI | CRUD operations for books work correctly with proper validation |
+[L:24]  | T103 | Page management within books | Add ability to add, remove, and reorder pages in a book | T102 | TODO | Medium | 4h | AI | Users can manipulate pages and changes persist |
+[L:25]  | T104 | Basic table creation on pages | Allow users to insert tables with customizable rows and columns | T103 | TODO | Medium | 4h | AI | Tables can be added to pages and resized |
+[L:26] -| T105 | Responsive layout implementation | Ensure the application works well on mobile, tablet, and desktop | T101-T104 | TODO | High | 6h | AI | Layout adapts to different screen sizes; drawing area is usable on mobile |
+\ No newline at end of file
+[L:26] +| T105 | Responsive layout implementation | Ensure the application works well on mobile, tablet, and desktop | T101-T104 | TODO | High | 6h | AI | Layout adapts to different screen sizes; drawing area is usable on mobile |
+[L:27] +| T106 | Personalized post-signup verification modal | Replace the native `alert()` shown after signup with an in-product, branded, personalized modal | T101 | TODO | Medium | 3h | AI | No `window.alert` fires in the verification-required signup path; a branded modal renders, addresses the user by name/email, and its primary action navigates to `/auth/login`; existing SignUpForm tests still pass; new tests cover the modal |
+diff --git a/Papyr/src/components/auth/SignUpForm.test.tsx b/Papyr/src/components/auth/SignUpForm.test.tsx
+index 7899d85..8b8b1d1 100644
+--- a/Papyr/src/components/auth/SignUpForm.test.tsx
++++ b/Papyr/src/components/auth/SignUpForm.test.tsx
+@@ -1,16 +1,26 @@
+[L:1]  import { render, screen } from '@testing-library/react';
+[L:2] +import { fireEvent, waitFor } from '@testing-library/react';
+[L:3/2]  import { describe, it, expect, vi, beforeEach } from 'vitest';
+[L:4/3]  import { SignUpForm } from './SignUpForm';
+[L:5/4]  
+[L:6] +const { signUp, push } = vi.hoisted(() => ({
+[L:7] +  signUp: vi.fn(),
+[L:8] +  push: vi.fn(),
+[L:9] +}));
+[L:10] +
+[L:11/5]  vi.mock('@/context/AuthContext', () => ({
+[L:12/6]    useAuth: () => ({
+[L:13/7]      user: null,
+[L:14/8]      loading: false,
+[L:15/9]      error: null,
+[L:10] -    signUp: vi.fn().mockResolvedValue({ error: null, requiresVerification: false }),
+[L:16] +    signUp,
+[L:17/11]    }),
+[L:18/12]  }));
+[L:19/13]  
+[L:20] +vi.mock('next/navigation', () => ({
+[L:21] +  useRouter: () => ({ push }),
+[L:22] +}));
+[L:23] +
+[L:24/14]  vi.mock('@/components/PapyrLogo', () => ({
+[L:25/15]    PapyrLogo: () => <div data-testid="papyr-logo">Papyr Logo</div>,
+[L:26/16]  }));
+@@ -18,6 +28,7 @@ vi.mock('@/components/PapyrLogo', () => ({
+[L:28/18]  describe('SignUpForm', () => {
+[L:29/19]    beforeEach(() => {
+[L:30/20]      vi.clearAllMocks();
+[L:31] +    signUp.mockResolvedValue({ error: null, requiresVerification: false });
+[L:32/21]    });
+[L:33/22]  
+[L:34/23]    it('renders signup form with correct heading', () => {
+@@ -99,4 +110,46 @@ describe('SignUpForm', () => {
+[L:110/99]      const wrapper = container.querySelector('.lg\\:flex-row');
+[L:111/100]      expect(wrapper).toBeInTheDocument();
+[L:112/101]    });
+[L:113] +
+[L:114] +  const submitVerificationSignup = async () => {
+[L:115] +    fireEvent.change(screen.getByLabelText(/Display name/i), { target: { value: 'Ariyo' } });
+[L:116] +    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'ariyo@example.com' } });
+[L:117] +    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'password123' } });
+[L:118] +    fireEvent.change(screen.getByLabelText(/Confirm password/i), { target: { value: 'password123' } });
+[L:119] +    fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
+[L:120] +
+[L:121] +    await waitFor(() => expect(signUp).toHaveBeenCalledWith('ariyo@example.com', 'password123', 'Ariyo'));
+[L:122] +  };
+[L:123] +
+[L:124] +  it('does not call window.alert when verification is required', async () => {
+[L:125] +    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+[L:126] +    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+[L:127] +    render(<SignUpForm />);
+[L:128] +
+[L:129] +    await submitVerificationSignup();
+[L:130] +
+[L:131] +    expect(alertSpy).not.toHaveBeenCalled();
+[L:132] +    alertSpy.mockRestore();
+[L:133] +  });
+[L:134] +
+[L:135] +  it('shows a personalized verification dialog', async () => {
+[L:136] +    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+[L:137] +    render(<SignUpForm />);
+[L:138] +
+[L:139] +    await submitVerificationSignup();
+[L:140] +
+[L:141] +    const dialog = await screen.findByRole('dialog');
+[L:142] +    expect(dialog).toHaveTextContent('Ariyo');
+[L:143] +    expect(dialog).toHaveTextContent('ariyo@example.com');
+[L:144] +  });
+[L:145] +
+[L:146] +  it('navigates to login when the verification modal primary action is clicked', async () => {
+[L:147] +    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+[L:148] +    render(<SignUpForm />);
+[L:149] +
+[L:150] +    await submitVerificationSignup();
+[L:151] +    fireEvent.click(await screen.findByRole('button', { name: /go to login/i }));
+[L:152] +
+[L:153] +    expect(push).toHaveBeenCalledWith('/auth/login');
+[L:154] +  });
+[L:155/102]  });
