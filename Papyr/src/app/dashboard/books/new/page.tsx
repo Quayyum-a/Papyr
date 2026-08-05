@@ -51,9 +51,8 @@ export default function NewBookPage() {
         .from('books')
         .insert({
           title: trimmedTitle,
-          description: description.trim(),
+          description: description.trim() || undefined,
           cover_color: selectedTheme.accent,
-          cover_theme: theme,
           user_id: user?.id,
         })
         .select()
