@@ -1,0 +1,268 @@
+diff --git a/Papyr/src/components/auth/SignUpForm.test.tsx b/Papyr/src/components/auth/SignUpForm.test.tsx
+index 7899d85..62f09e3 100644
+--- a/Papyr/src/components/auth/SignUpForm.test.tsx
++++ b/Papyr/src/components/auth/SignUpForm.test.tsx
+@@ -1,16 +1,25 @@
+[L:1] -import { render, screen } from '@testing-library/react';
+[L:1] +import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+[L:2]  import { describe, it, expect, vi, beforeEach } from 'vitest';
+[L:3]  import { SignUpForm } from './SignUpForm';
+[L:4]  
+[L:5] +const { signUp, push } = vi.hoisted(() => ({
+[L:6] +  signUp: vi.fn(),
+[L:7] +  push: vi.fn(),
+[L:8] +}));
+[L:9] +
+[L:10/5]  vi.mock('@/context/AuthContext', () => ({
+[L:11/6]    useAuth: () => ({
+[L:12/7]      user: null,
+[L:13/8]      loading: false,
+[L:14/9]      error: null,
+[L:10] -    signUp: vi.fn().mockResolvedValue({ error: null, requiresVerification: false }),
+[L:15] +    signUp,
+[L:16/11]    }),
+[L:17/12]  }));
+[L:18/13]  
+[L:19] +vi.mock('next/navigation', () => ({
+[L:20] +  useRouter: () => ({ push }),
+[L:21] +}));
+[L:22] +
+[L:23/14]  vi.mock('@/components/PapyrLogo', () => ({
+[L:24/15]    PapyrLogo: () => <div data-testid="papyr-logo">Papyr Logo</div>,
+[L:25/16]  }));
+@@ -18,6 +27,7 @@ vi.mock('@/components/PapyrLogo', () => ({
+[L:27/18]  describe('SignUpForm', () => {
+[L:28/19]    beforeEach(() => {
+[L:29/20]      vi.clearAllMocks();
+[L:30] +    signUp.mockResolvedValue({ error: null, requiresVerification: false });
+[L:31/21]    });
+[L:32/22]  
+[L:33/23]    it('renders signup form with correct heading', () => {
+@@ -99,4 +109,46 @@ describe('SignUpForm', () => {
+[L:109/99]      const wrapper = container.querySelector('.lg\\:flex-row');
+[L:110/100]      expect(wrapper).toBeInTheDocument();
+[L:111/101]    });
+[L:112] +
+[L:113] +  const submitVerificationSignup = async () => {
+[L:114] +    fireEvent.change(screen.getByLabelText(/Display name/i), { target: { value: 'Ariyo' } });
+[L:115] +    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'ariyo@example.com' } });
+[L:116] +    fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'password123' } });
+[L:117] +    fireEvent.change(screen.getByLabelText(/Confirm password/i), { target: { value: 'password123' } });
+[L:118] +    fireEvent.click(screen.getByRole('button', { name: /Create account/i }));
+[L:119] +
+[L:120] +    await waitFor(() => expect(signUp).toHaveBeenCalledWith('ariyo@example.com', 'password123', 'Ariyo'));
+[L:121] +  };
+[L:122] +
+[L:123] +  it('does not call window.alert when verification is required', async () => {
+[L:124] +    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+[L:125] +    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+[L:126] +    render(<SignUpForm />);
+[L:127] +
+[L:128] +    await submitVerificationSignup();
+[L:129] +
+[L:130] +    expect(alertSpy).not.toHaveBeenCalled();
+[L:131] +    alertSpy.mockRestore();
+[L:132] +  });
+[L:133] +
+[L:134] +  it('shows a personalized verification dialog', async () => {
+[L:135] +    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+[L:136] +    render(<SignUpForm />);
+[L:137] +
+[L:138] +    await submitVerificationSignup();
+[L:139] +
+[L:140] +    const dialog = await screen.findByRole('dialog');
+[L:141] +    expect(dialog).toHaveTextContent('Ariyo');
+[L:142] +    expect(dialog).toHaveTextContent('ariyo@example.com');
+[L:143] +  });
+[L:144] +
+[L:145] +  it('navigates to login when the verification modal primary action is clicked', async () => {
+[L:146] +    signUp.mockResolvedValue({ error: null, requiresVerification: true });
+[L:147] +    render(<SignUpForm />);
+[L:148] +
+[L:149] +    await submitVerificationSignup();
+[L:150] +    fireEvent.click(await screen.findByRole('button', { name: /go to login/i }));
+[L:151] +
+[L:152] +    expect(push).toHaveBeenCalledWith('/auth/login');
+[L:153] +  });
+[L:154/102]  });
+diff --git a/Papyr/src/components/ui/Modal.tsx b/Papyr/src/components/ui/Modal.tsx
+new file mode 100644
+index 0000000..c9165cc
+--- /dev/null
++++ b/Papyr/src/components/ui/Modal.tsx
+@@ -0,0 +1,40 @@
+[L:1] +import { useEffect } from 'react';
+[L:2] +import type { ReactNode } from 'react';
+[L:3] +
+[L:4] +type ModalProps = {
+[L:5] +  open: boolean;
+[L:6] +  onClose: () => void;
+[L:7] +  children: ReactNode;
+[L:8] +};
+[L:9] +
+[L:10] +export function Modal({ open, onClose, children }: ModalProps) {
+[L:11] +  useEffect(() => {
+[L:12] +    if (!open) return;
+[L:13] +
+[L:14] +    const handleKeyDown = (event: KeyboardEvent) => {
+[L:15] +      if (event.key === 'Escape') onClose();
+[L:16] +    };
+[L:17] +
+[L:18] +    document.addEventListener('keydown', handleKeyDown);
+[L:19] +    return () => document.removeEventListener('keydown', handleKeyDown);
+[L:20] +  }, [open, onClose]);
+[L:21] +
+[L:22] +  if (!open) return null;
+[L:23] +
+[L:24] +  return (
+[L:25] +    <div
+[L:26] +      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+[L:27] +      data-testid="modal-backdrop"
+[L:28] +      onClick={onClose}
+[L:29] +    >
+[L:30] +      <div
+[L:31] +        role="dialog"
+[L:32] +        aria-modal="true"
+[L:33] +        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+[L:34] +        onClick={(event) => event.stopPropagation()}
+[L:35] +      >
+[L:36] +        {children}
+[L:37] +      </div>
+[L:38] +    </div>
+[L:39] +  );
+[L:40] +}
+[L:41/0] 
+diff --git a/Papyr/TASKS.md b/Papyr/TASKS.md
+index 858e07d..91e1152 100644
+--- a/Papyr/TASKS.md
++++ b/Papyr/TASKS.md
+@@ -23,4 +23,5 @@
+[L:23]  | T102 | Book creation and listing | Allow users to create, view, list, and delete books | T101 | TODO | High | 6h | AI | CRUD operations for books work correctly with proper validation |
+[L:24]  | T103 | Page management within books | Add ability to add, remove, and reorder pages in a book | T102 | TODO | Medium | 4h | AI | Users can manipulate pages and changes persist |
+[L:25]  | T104 | Basic table creation on pages | Allow users to insert tables with customizable rows and columns | T103 | TODO | Medium | 4h | AI | Tables can be added to pages and resized |
+[L:26] -| T105 | Responsive layout implementation | Ensure the application works well on mobile, tablet, and desktop | T101-T104 | TODO | High | 6h | AI | Layout adapts to different screen sizes; drawing area is usable on mobile |
+\ No newline at end of file
+[L:26] +| T105 | Responsive layout implementation | Ensure the application works well on mobile, tablet, and desktop | T101-T104 | TODO | High | 6h | AI | Layout adapts to different screen sizes; drawing area is usable on mobile |
+[L:27] +| T106 | Personalized post-signup verification modal | Replace the native `alert()` shown after signup with an in-product, branded, personalized modal | T101 | TODO | Medium | 3h | AI | No `window.alert` fires in the verification-required signup path; a branded modal renders, addresses the user by name/email, and its primary action navigates to `/auth/login`; existing SignUpForm tests still pass; new tests cover the modal |
+diff --git a/Papyr/src/components/auth/SignUpForm.tsx b/Papyr/src/components/auth/SignUpForm.tsx
+index f90f16d..44c0eb7 100644
+--- a/Papyr/src/components/auth/SignUpForm.tsx
++++ b/Papyr/src/components/auth/SignUpForm.tsx
+@@ -2,17 +2,22 @@
+[L:2]  'use client';
+[L:3]  
+[L:4]  import { useState } from 'react';
+[L:5] +import { useRouter } from 'next/navigation';
+[L:6] +import { MailCheck } from 'lucide-react';
+[L:7/5]  import { useAuth } from '@/context/AuthContext';
+[L:8/6]  import Link from 'next/link';
+[L:9/7]  import { PapyrLogo } from '@/components/PapyrLogo';
+[L:10] +import { Modal } from '@/components/ui/Modal';
+[L:11/8]  
+[L:12/9]  export function SignUpForm() {
+[L:13] +  const router = useRouter();
+[L:14/10]    const { signUp, loading, error } = useAuth();
+[L:15/11]    const [email, setEmail] = useState('');
+[L:16/12]    const [password, setPassword] = useState('');
+[L:17/13]    const [confirmPassword, setConfirmPassword] = useState('');
+[L:18/14]    const [displayName, setDisplayName] = useState('');
+[L:19/15]    const [isLoading, setIsLoading] = useState(false);
+[L:20] +  const [showVerificationModal, setShowVerificationModal] = useState(false);
+[L:21/16]  
+[L:22/17]    const handleSubmit = async (e: React.FormEvent) => {
+[L:23/18]      e.preventDefault();
+@@ -34,10 +39,9 @@ export function SignUpForm() {
+[L:39/34]  
+[L:40/35]      if (!error) {
+[L:41/36]        if (requiresVerification) {
+[L:37] -        alert('Account created! Please check your email to verify your account before signing in.');
+[L:38] -        window.location.href = '/auth/login';
+[L:42] +        setShowVerificationModal(true);
+[L:43/39]        } else {
+[L:40] -        window.location.href = '/dashboard';
+[L:44] +        router.push('/dashboard');
+[L:45/41]        }
+[L:46/42]      }
+[L:47/43]    };
+@@ -225,6 +229,28 @@ export function SignUpForm() {
+[L:229/225]            </svg>
+[L:230/226]          </div>
+[L:231/227]        </div>
+[L:232] +
+[L:233] +      <Modal open={showVerificationModal} onClose={() => setShowVerificationModal(false)}>
+[L:234] +        <div className="text-center">
+[L:235] +          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+[L:236] +            <MailCheck className="h-6 w-6" aria-hidden="true" />
+[L:237] +          </div>
+[L:238] +          <h2 className="mt-4 text-2xl font-bold text-gray-900">Check your inbox, {displayName || 'there'}.</h2>
+[L:239] +          <p className="mt-2 text-sm text-gray-600">
+[L:240] +            We sent a verification email to <span className="font-medium text-gray-900">{email}</span>. Verify your email before signing in.
+[L:241] +          </p>
+[L:242] +          <button
+[L:243] +            type="button"
+[L:244] +            onClick={() => {
+[L:245] +              setShowVerificationModal(false);
+[L:246] +              router.push('/auth/login');
+[L:247] +            }}
+[L:248] +            className="mt-6 w-full bg-slate-900 px-4 py-3 font-medium text-white rounded-full transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+[L:249] +          >
+[L:250] +            Go to login
+[L:251] +          </button>
+[L:252] +        </div>
+[L:253] +      </Modal>
+[L:254/228]      </div>
+[L:255/229]    );
+[L:256/230]  }
+diff --git a/Papyr/src/components/ui/Modal.test.tsx b/Papyr/src/components/ui/Modal.test.tsx
+new file mode 100644
+index 0000000..8bf8012
+--- /dev/null
++++ b/Papyr/src/components/ui/Modal.test.tsx
+@@ -0,0 +1,47 @@
+[L:1] +import { fireEvent, render, screen } from '@testing-library/react';
+[L:2] +import { describe, expect, it, vi } from 'vitest';
+[L:3] +import { Modal } from './Modal';
+[L:4] +
+[L:5] +describe('Modal', () => {
+[L:6] +  it('renders children only when open', () => {
+[L:7] +    const { rerender } = render(
+[L:8] +      <Modal open={false} onClose={vi.fn()}>
+[L:9] +        <p>Verification message</p>
+[L:10] +      </Modal>
+[L:11] +    );
+[L:12] +
+[L:13] +    expect(screen.queryByText('Verification message')).not.toBeInTheDocument();
+[L:14] +
+[L:15] +    rerender(
+[L:16] +      <Modal open onClose={vi.fn()}>
+[L:17] +        <p>Verification message</p>
+[L:18] +      </Modal>
+[L:19] +    );
+[L:20] +
+[L:21] +    expect(screen.getByText('Verification message')).toBeInTheDocument();
+[L:22] +  });
+[L:23] +
+[L:24] +  it('calls onClose when Escape is pressed', () => {
+[L:25] +    const onClose = vi.fn();
+[L:26] +    render(<Modal open onClose={onClose}>Content</Modal>);
+[L:27] +
+[L:28] +    fireEvent.keyDown(document, { key: 'Escape' });
+[L:29] +
+[L:30] +    expect(onClose).toHaveBeenCalledOnce();
+[L:31] +  });
+[L:32] +
+[L:33] +  it('calls onClose when the backdrop is clicked', () => {
+[L:34] +    const onClose = vi.fn();
+[L:35] +    render(<Modal open onClose={onClose}>Content</Modal>);
+[L:36] +
+[L:37] +    fireEvent.click(screen.getByTestId('modal-backdrop'));
+[L:38] +
+[L:39] +    expect(onClose).toHaveBeenCalledOnce();
+[L:40] +  });
+[L:41] +
+[L:42] +  it('uses accessible dialog semantics', () => {
+[L:43] +    render(<Modal open onClose={vi.fn()}>Content</Modal>);
+[L:44] +
+[L:45] +    expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
+[L:46] +  });
+[L:47] +});

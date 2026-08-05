@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS books (
   title TEXT NOT NULL,
   description TEXT,
   cover_color TEXT DEFAULT '#3B82F6',
+  cover_theme TEXT DEFAULT 'Graphite',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
