@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { Search, User } from 'lucide-react';
 import { PapyrLogo } from '@/components/PapyrLogo';
+import { supabase } from '@/lib/supabase/client';
 
 interface Book {
   id: string;
@@ -42,74 +43,33 @@ export default function BooksPage() {
 
   const fetchBooks = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const mockBooks = [
-        {
-          id: '1',
-          title: 'Repair Log: Speedy Wrench',
-          description: 'Graphite (#959B5F)',
-          cover_color: '#8B7355',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-11-20T10:00:00Z',
-          page_count: 45,
-        },
-        {
-          id: '2',
-          title: 'Client Ledger: Beauty Salon',
-          description: 'Graphite (#959B5F)',
-          cover_color: '#A09070',
-          created_at: '2024-03-20T10:00:00Z',
-          updated_at: '2024-11-20T14:30:00Z',
-          page_count: 45,
-        },
-        {
-          id: '3',
-          title: 'Inventory Stock: Gadget Corner',
-          description: 'Graphite (#959B5F)',
-          cover_color: '#B8A89C',
-          created_at: '2024-06-10T09:00:00Z',
-          updated_at: '2024-11-20T16:45:00Z',
-          page_count: 45,
-        },
-        {
-          id: '4',
-          title: 'Consumables Log: Neighborhood Store',
-          description: 'Graphite (#959B5F)',
-          cover_color: '#A0C4A8',
-          created_at: '2024-02-05T08:00:00Z',
-          updated_at: '2024-11-20T09:15:00Z',
-          page_count: 45,
-        },
-        {
-          id: '5',
-          title: 'Consumables Log: Neighborhood Store',
-          description: 'Graphite (#959B5F)',
-          cover_color: '#D4A574',
-          created_at: '2024-05-12T11:00:00Z',
-          updated_at: '2024-11-19T13:45:00Z',
-          page_count: 45,
-        },
-        {
-          id: '6',
-          title: 'Electronics Trade: Parts',
-          description: 'Graphite (#959B5F)',
-          cover_color: '#7CA89F',
-          created_at: '2024-04-18T14:00:00Z',
-          updated_at: '2024-11-19T15:30:00Z',
-          page_count: 45,
-        },
-        {
-          id: '7',
-          title: 'Mechanic Jobs: Daily',
-          description: 'Graphite (#959B5F)',
-          cover_color: '#9CB4A0',
-          created_at: '2024-07-22T10:30:00Z',
-          updated_at: '2024-11-18T11:20:00Z',
-          page_count: 45,
-        },
-      ];
-      setBooks(mockBooks);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Not authenticated');
+        return;
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('books')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      // Transform books to include page_count (default to 0 for now)
+      const booksWithCount = (data || []).map((book: any) => ({
+        ...book,
+        page_count: 0, // TODO: Get actual page count from pages table
+      }));
+
+      setBooks(booksWithCount);
     } catch (err) {
+      console.error('Failed to load books:', err);
       setError('Failed to load books');
     } finally {
       setLoading(false);
@@ -243,7 +203,12 @@ export default function BooksPage() {
                 )}
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>{book.page_count} Pages</span>
-                  <span>Last Updated: 2d ago</span>
+                  <span>
+                    {new Date(book.updated_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </span>
                 </div>
               </Link>
             ))}
