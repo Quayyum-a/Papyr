@@ -1,18 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 import { LedgerPage } from '@/components/ledger/LedgerPage';
-import { LedgerTable } from '@/components/ledger/LedgerTable';
+import { LedgerWorkspace } from '@/components/ledger-workspace/LedgerWorkspace';
 import { PapyrLogo } from '@/components/PapyrLogo';
 import { User, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import type { Book } from '@/types/book';
-import type { LedgerColumn, LedgerRow, LedgerCell, LedgerConfig, LedgerPageContent, CellCoordinates } from '@/types/ledger';
-import { DEFAULT_LEDGER_CONFIG, MIN_COLUMN_WIDTH, DEFAULT_ROW_COUNT, getCellId } from '@/types/ledger';
-import { v4 as uuidv4 } from 'uuid';
+import type { LedgerPageContent } from '@/types/ledger';
 
 export default function BookLedgerPage() {
   const params = useParams();
@@ -21,8 +19,6 @@ export default function BookLedgerPage() {
   const bookId = params.id as string;
 
   const [book, setBook] = useState<Book | null>(null);
-  const [columns, setColumns] = useState<LedgerColumn[]>([]);
-  const [rows, setRows] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageId, setPageId] = useState<string | null>(null);
@@ -77,16 +73,8 @@ export default function BookLedgerPage() {
 
       // If no page exists, create default page with ledger content
       if (!pageData) {
-        const defaultContent: LedgerPageContent = {
-          strokes: [],
-          ledger: {
-            columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
-              ...col,
-              id: `col-${idx}`,
-            })),
-            rowCount: DEFAULT_LEDGER_CONFIG.rowCount,
-          },
-        };
+        const { createDefaultLedgerPageContent } = await import('@/types/ledger');
+        const defaultContent = createDefaultLedgerPageContent();
 
         const { data: newPage, error: createPageError } = await supabase
           .from('pages')
@@ -103,10 +91,8 @@ export default function BookLedgerPage() {
         if (createPageError) throw createPageError;
         pageData = newPage;
         setPageContent(defaultContent);
-        initializeFromContent(defaultContent);
       } else {
         setPageContent(pageData.content as LedgerPageContent);
-        initializeFromContent(pageData.content as LedgerPageContent);
       }
 
       setPageId(pageData.id);
@@ -116,159 +102,6 @@ export default function BookLedgerPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const initializeFromContent = (content: LedgerPageContent) => {
-    const ledgerConfig = content.ledger || {
-      columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({ ...col, id: `col-${idx}` })),
-      rowCount: DEFAULT_ROW_COUNT,
-    };
-
-    const loadedColumns: LedgerColumn[] = ledgerConfig.columns.map((col, idx) => ({
-      id: col.id || `col-${idx}`,
-      label: col.label,
-      width: col.width || MIN_COLUMN_WIDTH,
-      position: col.position ?? idx,
-    }));
-
-    setColumns(loadedColumns);
-
-    // Create rows with empty cells
-    const initialRows: LedgerRow[] = Array.from({ length: ledgerConfig.rowCount }, (_, rowIndex) => ({
-      id: `row-${rowIndex}`,
-      position: rowIndex,
-      cells: loadedColumns.map((col) => ({
-        id: getCellId({ columnIndex: col.position, rowIndex }),
-        row_id: `row-${rowIndex}`,
-        column_id: col.id,
-        content: '',
-        content_type: 'empty' as const,
-      })),
-    }));
-
-    setRows(initialRows);
-  };
-
-  const savePageContent = useCallback(async () => {
-    if (!pageId || !pageContent) return;
-
-    try {
-      const updatedContent: LedgerPageContent = {
-        ...pageContent,
-        ledger: {
-          columns: columns.map((col) => ({
-            id: col.id,
-            label: col.label,
-            width: col.width,
-            position: col.position,
-          })),
-          rowCount: pageContent.ledger.rowCount,
-        },
-      };
-
-      const { error } = await supabase
-        .from('pages')
-        .update({ content: updatedContent })
-        .eq('id', pageId);
-
-      if (error) throw error;
-      setPageContent(updatedContent);
-    } catch (err) {
-      console.error('Error saving page content:', err);
-    }
-  }, [pageId, pageContent, columns]);
-
-  const handleColumnAdd = () => {
-    const newColumn: LedgerColumn = {
-      id: uuidv4(),
-      label: 'New Column',
-      width: MIN_COLUMN_WIDTH,
-      position: columns.length,
-    };
-
-    setColumns([...columns, newColumn]);
-
-    // Add cells for this new column to all rows
-    setRows(
-      rows.map((row) => ({
-        ...row,
-        cells: [
-          ...row.cells,
-          {
-            id: getCellId({ columnIndex: newColumn.position, rowIndex: row.position ?? 0 }),
-            row_id: row.id,
-            column_id: newColumn.id,
-            content: '',
-            content_type: 'empty' as const,
-          },
-        ],
-      }))
-    );
-
-    savePageContent();
-  };
-
-  const handleColumnRemove = (columnId: string) => {
-    if (columns.length <= 1) return;
-
-    const columnIndex = columns.findIndex((c) => c.id === columnId);
-    if (columnIndex === -1) return;
-
-    const newColumns = columns.filter((col) => col.id !== columnId).map((col, idx) => ({
-      ...col,
-      position: idx,
-    }));
-
-    setColumns(newColumns);
-    setRows(
-      rows.map((row) => ({
-        ...row,
-        cells: row.cells.filter((cell) => cell.column_id !== columnId),
-      }))
-    );
-
-    savePageContent();
-  };
-
-  const handleColumnUpdate = (columnId: string, updates: Partial<LedgerColumn>) => {
-    setColumns(
-      columns.map((col) => (col.id === columnId ? { ...col, ...updates } : col))
-    );
-    savePageContent();
-  };
-
-  const handleCellUpdate = (cellId: string, content: string) => {
-    setRows(
-      rows.map((row) => ({
-        ...row,
-        cells: row.cells.map((cell) =>
-          cell.id === cellId
-            ? { ...cell, content, content_type: content ? 'text' : 'empty' }
-            : cell
-        ),
-      }))
-    );
-    savePageContent();
-  };
-
-  const handleRowAdd = () => {
-    const newRow: LedgerRow = {
-      id: uuidv4(),
-      position: rows.length,
-      cells: columns.map((col, colIndex) => ({
-        id: getCellId({ columnIndex: colIndex, rowIndex: rows.length }),
-        row_id: '',
-        column_id: col.id,
-        content: '',
-        content_type: 'empty' as const,
-      })),
-    };
-    newRow.cells.forEach((cell) => {
-      cell.row_id = newRow.id;
-    });
-
-    setRows([...rows, newRow]);
-    savePageContent();
   };
 
   if (loading || authLoading) {
@@ -336,18 +169,19 @@ export default function BookLedgerPage() {
         </div>
       </header>
 
-      {/* Ledger Content */}
-      <LedgerPage bookTitle={book?.title}>
-        <LedgerTable
-          columns={columns}
-          rows={rows}
-          onColumnAdd={handleColumnAdd}
-          onColumnRemove={handleColumnRemove}
-          onColumnUpdate={handleColumnUpdate}
-          onCellUpdate={handleCellUpdate}
-          onRowAdd={handleRowAdd}
-        />
-      </LedgerPage>
+      {/* Ledger Workspace */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <LedgerPage bookTitle={book?.title}>
+          <div className="h-[calc(100vh-200px)] min-h-[500px]">
+            <LedgerWorkspace
+              bookId={bookId}
+              pageId={pageId}
+              initialContent={pageContent || undefined}
+              className="h-full"
+            />
+          </div>
+        </LedgerPage>
+      </div>
     </div>
   );
 }

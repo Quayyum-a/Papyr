@@ -174,3 +174,20 @@ export interface LedgerRow {
   position?: number; // Optional for backward compatibility
   cells: LedgerCell[];
 }
+
+/**
+ * Create default ledger page content
+ * Used when creating a new page for a book
+ */
+export function createDefaultLedgerPageContent(): LedgerPageContent {
+  return {
+    strokes: [],
+    ledger: {
+      columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
+        ...col,
+        id: `col-${idx}`,
+      })),
+      rowCount: DEFAULT_LEDGER_CONFIG.rowCount,
+    },
+  };
+}

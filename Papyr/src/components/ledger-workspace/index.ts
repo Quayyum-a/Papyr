@@ -1,6 +1,6 @@
 /**
  * Ledger Workspace Components
- * 
+ *
  * Three-layer canvas system for the digital ledger:
  * - Paper layer: Realistic paper texture and background
  * - Grid layer: Row and column lines
@@ -14,7 +14,9 @@ export { GridLayer } from './GridLayer';
 export { InkLayer } from './InkLayer';
 export { ColumnHeaders } from './ColumnHeaders';
 export { CellHighlights } from './CellHighlights';
+export { LedgerWorkspace } from './LedgerWorkspace';
 
 export { useLedgerCanvas } from './useLedgerCanvas';
 export { useCellSelection } from './useCellSelection';
 export { useLedgerConfig } from './useLedgerConfig';
+export { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
