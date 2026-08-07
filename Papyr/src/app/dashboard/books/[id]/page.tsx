@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
@@ -10,8 +10,9 @@ import { PapyrLogo } from '@/components/PapyrLogo';
 import { User, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import type { Book } from '@/types/book';
-import type { LedgerColumn, LedgerRow, LedgerCell } from '@/types/ledger';
-import { DEFAULT_COLUMNS, DEFAULT_ROW_COUNT, MIN_COLUMN_WIDTH } from '@/types/ledger';
+import type { LedgerColumn, LedgerRow, LedgerCell, LedgerConfig, LedgerPageContent, CellCoordinates } from '@/types/ledger';
+import { DEFAULT_LEDGER_CONFIG, MIN_COLUMN_WIDTH, DEFAULT_ROW_COUNT, getCellId } from '@/types/ledger';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function BookLedgerPage() {
   const params = useParams();
@@ -25,6 +26,7 @@ export default function BookLedgerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageId, setPageId] = useState<string | null>(null);
+  const [pageContent, setPageContent] = useState<LedgerPageContent | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -73,45 +75,41 @@ export default function BookLedgerPage() {
 
       let pageData = pagesData && pagesData.length > 0 ? pagesData[0] : null;
 
-      // If no page exists, create default page
+      // If no page exists, create default page with ledger content
       if (!pageData) {
+        const defaultContent: LedgerPageContent = {
+          strokes: [],
+          ledger: {
+            columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
+              ...col,
+              id: `col-${idx}`,
+            })),
+            rowCount: DEFAULT_LEDGER_CONFIG.rowCount,
+          },
+        };
+
         const { data: newPage, error: createPageError } = await supabase
           .from('pages')
           .insert({
             book_id: bookId,
             title: null,
+            page_number: 0,
             position: 0,
+            content: defaultContent,
           })
           .select()
           .single();
 
         if (createPageError) throw createPageError;
         pageData = newPage;
-
-        // Create default table with columns
-        const { data: newTable, error: createTableError } = await supabase
-          .from('tables')
-          .insert({
-            page_id: pageData.id,
-            title: null,
-            columns: DEFAULT_COLUMNS,
-            rows: [],
-            width: 800,
-            height: 600,
-            position_x: 0,
-            position_y: 0,
-          })
-          .select()
-          .single();
-
-        if (createTableError) throw createTableError;
-
-        // Initialize columns and rows from defaults
-        await initializeDefaultLedger(pageData.id, newTable.id);
+        setPageContent(defaultContent);
+        initializeFromContent(defaultContent);
+      } else {
+        setPageContent(pageData.content as LedgerPageContent);
+        initializeFromContent(pageData.content as LedgerPageContent);
       }
 
       setPageId(pageData.id);
-      await loadLedgerData(pageData.id);
     } catch (err) {
       console.error('Error loading book and page:', err);
       setError('Failed to load ledger');
@@ -120,120 +118,69 @@ export default function BookLedgerPage() {
     }
   };
 
-  const initializeDefaultLedger = async (pageId: string, tableId: string) => {
-    // Create initial columns
-    const columnIds = await Promise.all(
-      DEFAULT_COLUMNS.map(async (col) => {
-        const id = crypto.randomUUID();
-        return { ...col, id };
-      })
-    );
+  const initializeFromContent = (content: LedgerPageContent) => {
+    const ledgerConfig = content.ledger || {
+      columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({ ...col, id: `col-${idx}` })),
+      rowCount: DEFAULT_ROW_COUNT,
+    };
 
-    // Create initial rows
-    const initialRows: LedgerRow[] = Array.from({ length: DEFAULT_ROW_COUNT }, (_, i) => ({
-      id: crypto.randomUUID(),
-      position: i,
-      cells: columnIds.map((col) => ({
-        id: crypto.randomUUID(),
-        row_id: '',
+    const loadedColumns: LedgerColumn[] = ledgerConfig.columns.map((col, idx) => ({
+      id: col.id || `col-${idx}`,
+      label: col.label,
+      width: col.width || MIN_COLUMN_WIDTH,
+      position: col.position ?? idx,
+    }));
+
+    setColumns(loadedColumns);
+
+    // Create rows with empty cells
+    const initialRows: LedgerRow[] = Array.from({ length: ledgerConfig.rowCount }, (_, rowIndex) => ({
+      id: `row-${rowIndex}`,
+      position: rowIndex,
+      cells: loadedColumns.map((col) => ({
+        id: getCellId({ columnIndex: col.position, rowIndex }),
+        row_id: `row-${rowIndex}`,
         column_id: col.id,
         content: '',
         content_type: 'empty' as const,
       })),
     }));
 
-    // Update row_id for cells
-    initialRows.forEach((row) => {
-      row.cells.forEach((cell) => {
-        cell.row_id = row.id;
-      });
-    });
-
-    setColumns(columnIds);
     setRows(initialRows);
   };
 
-  const loadLedgerData = async (pageId: string) => {
-    // Load table for this page
-    const { data: tablesData, error: tableError } = await supabase
-      .from('tables')
-      .select('*')
-      .eq('page_id', pageId);
+  const savePageContent = useCallback(async () => {
+    if (!pageId || !pageContent) return;
 
-    if (tableError) throw tableError;
-
-    const tableData = tablesData && tablesData.length > 0 ? tablesData[0] : null;
-
-    if (tableData) {
-      // Parse columns from JSONB
-      const loadedColumns = (tableData.columns as any[]).map((col, idx) => ({
-        id: col.id || crypto.randomUUID(),
-        label: col.label,
-        width: col.width || MIN_COLUMN_WIDTH,
-        position: idx,
-      }));
-
-      setColumns(loadedColumns);
-
-      // Load cells
-      const { data: cellsData, error: cellsError } = await supabase
-        .from('cells')
-        .select('*')
-        .eq('table_id', tableData.id)
-        .order('row_index', { ascending: true });
-
-      if (cellsError) throw cellsError;
-
-      // Group cells by row
-      const rowMap = new Map<number, LedgerCell[]>();
-      (cellsData || []).forEach((cell: any) => {
-        if (!rowMap.has(cell.row_index)) {
-          rowMap.set(cell.row_index, []);
-        }
-        rowMap.get(cell.row_index)!.push({
-          id: cell.id,
-          row_id: `row-${cell.row_index}`,
-          column_id: loadedColumns[cell.column_index]?.id || '',
-          content: cell.content_data?.text || '',
-          content_type: cell.content_type as 'text' | 'ink' | 'empty',
-        });
-      });
-
-      // Create rows
-      const loadedRows: LedgerRow[] = Array.from(rowMap.entries())
-        .map(([rowIndex, cells]) => ({
-          id: `row-${rowIndex}`,
-          position: rowIndex,
-          cells,
-        }))
-        .sort((a, b) => a.position - b.position);
-
-      // Ensure we have at least DEFAULT_ROW_COUNT rows
-      while (loadedRows.length < DEFAULT_ROW_COUNT) {
-        const newRow: LedgerRow = {
-          id: crypto.randomUUID(),
-          position: loadedRows.length,
-          cells: loadedColumns.map((col) => ({
-            id: crypto.randomUUID(),
-            row_id: '',
-            column_id: col.id,
-            content: '',
-            content_type: 'empty' as const,
+    try {
+      const updatedContent: LedgerPageContent = {
+        ...pageContent,
+        ledger: {
+          columns: columns.map((col) => ({
+            id: col.id,
+            label: col.label,
+            width: col.width,
+            position: col.position,
           })),
-        };
-        newRow.cells.forEach((cell) => {
-          cell.row_id = newRow.id;
-        });
-        loadedRows.push(newRow);
-      }
+          rowCount: pageContent.ledger.rowCount,
+        },
+      };
 
-      setRows(loadedRows);
+      const { error } = await supabase
+        .from('pages')
+        .update({ content: updatedContent })
+        .eq('id', pageId);
+
+      if (error) throw error;
+      setPageContent(updatedContent);
+    } catch (err) {
+      console.error('Error saving page content:', err);
     }
-  };
+  }, [pageId, pageContent, columns]);
 
   const handleColumnAdd = () => {
     const newColumn: LedgerColumn = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       label: 'New Column',
       width: MIN_COLUMN_WIDTH,
       position: columns.length,
@@ -248,7 +195,7 @@ export default function BookLedgerPage() {
         cells: [
           ...row.cells,
           {
-            id: crypto.randomUUID(),
+            id: getCellId({ columnIndex: newColumn.position, rowIndex: row.position ?? 0 }),
             row_id: row.id,
             column_id: newColumn.id,
             content: '',
@@ -258,14 +205,21 @@ export default function BookLedgerPage() {
       }))
     );
 
-    // Persist to database
-    saveLedgerData();
+    savePageContent();
   };
 
   const handleColumnRemove = (columnId: string) => {
     if (columns.length <= 1) return;
 
-    setColumns(columns.filter((col) => col.id !== columnId));
+    const columnIndex = columns.findIndex((c) => c.id === columnId);
+    if (columnIndex === -1) return;
+
+    const newColumns = columns.filter((col) => col.id !== columnId).map((col, idx) => ({
+      ...col,
+      position: idx,
+    }));
+
+    setColumns(newColumns);
     setRows(
       rows.map((row) => ({
         ...row,
@@ -273,14 +227,14 @@ export default function BookLedgerPage() {
       }))
     );
 
-    saveLedgerData();
+    savePageContent();
   };
 
   const handleColumnUpdate = (columnId: string, updates: Partial<LedgerColumn>) => {
     setColumns(
       columns.map((col) => (col.id === columnId ? { ...col, ...updates } : col))
     );
-    saveLedgerData();
+    savePageContent();
   };
 
   const handleCellUpdate = (cellId: string, content: string) => {
@@ -294,15 +248,15 @@ export default function BookLedgerPage() {
         ),
       }))
     );
-    saveLedgerData();
+    savePageContent();
   };
 
   const handleRowAdd = () => {
     const newRow: LedgerRow = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       position: rows.length,
-      cells: columns.map((col) => ({
-        id: crypto.randomUUID(),
+      cells: columns.map((col, colIndex) => ({
+        id: getCellId({ columnIndex: colIndex, rowIndex: rows.length }),
         row_id: '',
         column_id: col.id,
         content: '',
@@ -314,35 +268,7 @@ export default function BookLedgerPage() {
     });
 
     setRows([...rows, newRow]);
-    saveLedgerData();
-  };
-
-  const saveLedgerData = async () => {
-    if (!pageId) return;
-
-    try {
-      // Update table columns
-      const { data: tableData } = await supabase
-        .from('tables')
-        .select('id')
-        .eq('page_id', pageId)
-        .single();
-
-      if (tableData) {
-        await supabase
-          .from('tables')
-          .update({
-            columns: columns.map((col) => ({
-              id: col.id,
-              label: col.label,
-              width: col.width,
-            })),
-          })
-          .eq('id', tableData.id);
-      }
-    } catch (err) {
-      console.error('Error saving ledger data:', err);
-    }
+    savePageContent();
   };
 
   if (loading || authLoading) {
@@ -386,6 +312,12 @@ export default function BookLedgerPage() {
               <PapyrLogo />
             </div>
             <div className="flex items-center gap-3">
+              <Link
+                href={`/dashboard/books/${bookId}/ledger`}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                ✍️ Workspace
+              </Link>
               <Link
                 href={`/dashboard/books/${bookId}/canvas`}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
