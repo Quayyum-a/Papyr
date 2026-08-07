@@ -22,8 +22,8 @@ describe('CellHighlights', () => {
       />
     );
 
-    // Should render 2 columns * 5 rows = 10 cells
-    const cells = container.querySelectorAll('[role="button"]');
+    // Should render 2 columns * 5 rows = 10 cells (gridcells)
+    const cells = container.querySelectorAll('[role="gridcell"]');
     expect(cells).toHaveLength(10);
   });
 
@@ -37,7 +37,7 @@ describe('CellHighlights', () => {
       />
     );
 
-    const firstCell = container.querySelector('[role="button"]') as HTMLElement;
+    const firstCell = container.querySelector('[role="gridcell"]') as HTMLElement;
     fireEvent.click(firstCell);
 
     expect(handleCellSelect).toHaveBeenCalledWith({ columnIndex: 0, rowIndex: 0 });
@@ -46,7 +46,7 @@ describe('CellHighlights', () => {
   it('should toggle selection when clicking same cell', () => {
     const handleCellSelect = vi.fn();
     const selectedCell: CellCoordinates = { columnIndex: 0, rowIndex: 0 };
-    
+
     const { container } = render(
       <CellHighlights
         ledgerConfig={mockLedgerConfig}
@@ -55,7 +55,7 @@ describe('CellHighlights', () => {
       />
     );
 
-    const firstCell = container.querySelector('[role="button"]') as HTMLElement;
+    const firstCell = container.querySelector('[role="gridcell"]') as HTMLElement;
     fireEvent.click(firstCell);
 
     expect(handleCellSelect).toHaveBeenCalledWith(null);
@@ -64,7 +64,7 @@ describe('CellHighlights', () => {
   it('should highlight selected cell', () => {
     const handleCellSelect = vi.fn();
     const selectedCell: CellCoordinates = { columnIndex: 1, rowIndex: 2 };
-    
+
     const { container } = render(
       <CellHighlights
         ledgerConfig={mockLedgerConfig}
@@ -73,7 +73,7 @@ describe('CellHighlights', () => {
       />
     );
 
-    const cells = container.querySelectorAll('[role="button"]');
+    const cells = container.querySelectorAll('[role="gridcell"]');
     // Row 2, Column 1: (2 rows * 2 columns per row) + column 1 = cell 5
     const selectedCellElement = cells[5];
 
@@ -83,7 +83,7 @@ describe('CellHighlights', () => {
   it('should clear selection when clicking background', () => {
     const handleCellSelect = vi.fn();
     const selectedCell: CellCoordinates = { columnIndex: 0, rowIndex: 0 };
-    
+
     const { container } = render(
       <CellHighlights
         ledgerConfig={mockLedgerConfig}
@@ -108,8 +108,8 @@ describe('CellHighlights', () => {
       />
     );
 
-    const firstCell = container.querySelector('[role="button"]') as HTMLElement;
-    
+    const firstCell = container.querySelector('[role="gridcell"]') as HTMLElement;
+
     // Test Enter key
     fireEvent.keyDown(firstCell, { key: 'Enter' });
     expect(handleCellSelect).toHaveBeenCalledWith({ columnIndex: 0, rowIndex: 0 });
@@ -129,7 +129,8 @@ describe('CellHighlights', () => {
       />
     );
 
-    expect(screen.getByLabelText('Cell Date row 1')).toBeInTheDocument();
-    expect(screen.getByLabelText('Cell Description row 1')).toBeInTheDocument();
+    // New aria-label format: "ColumnLabel, Row N"
+    expect(screen.getByLabelText('Date, Row 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Description, Row 1')).toBeInTheDocument();
   });
 });
