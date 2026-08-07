@@ -385,13 +385,21 @@ export default function BookLedgerPage() {
               </Link>
               <PapyrLogo />
             </div>
-            <Link
-              href="/profile"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="View profile"
-            >
-              <User className="w-6 h-6 text-gray-600" />
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/dashboard/books/${bookId}/canvas`}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Canvas
+              </Link>
+              <Link
+                href="/profile"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="View profile"
+              >
+                <User className="w-6 h-6 text-gray-600" />
+              </Link>
+            </div>
           </div>
         </div>
       </header>
