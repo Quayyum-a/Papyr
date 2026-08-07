@@ -80,6 +80,7 @@ export default function BookLedgerPage() {
           .insert({
             book_id: bookId,
             title: null,
+            page_number: 0,
             position: 0,
           })
           .select()
