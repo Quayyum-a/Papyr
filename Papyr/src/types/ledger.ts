@@ -155,3 +155,17 @@ export const MIN_COLUMN_WIDTH = LEDGER_CONSTANTS.MIN_COLUMN_WIDTH;
 export const MAX_COLUMN_WIDTH = LEDGER_CONSTANTS.MAX_COLUMN_WIDTH;
 export const DEFAULT_ROW_COUNT = DEFAULT_LEDGER_CONFIG.rowCount;
 export const DEFAULT_COLUMNS = DEFAULT_LEDGER_CONFIG.columns;
+
+/**
+ * Legacy types for old table-based ledger (backward compatibility)
+ * These are used by the old book detail page
+ */
+export interface LedgerCell {
+  id: string;
+  value: string;
+}
+
+export interface LedgerRow {
+  id: string;
+  cells: LedgerCell[];
+}
