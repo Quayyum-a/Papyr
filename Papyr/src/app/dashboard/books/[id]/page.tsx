@@ -387,6 +387,12 @@ export default function BookLedgerPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link
+                href={`/dashboard/books/${bookId}/ledger`}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                ✍️ Workspace
+              </Link>
+              <Link
                 href={`/dashboard/books/${bookId}/canvas`}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >

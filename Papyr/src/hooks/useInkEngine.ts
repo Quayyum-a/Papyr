@@ -69,6 +69,18 @@ export function useInkEngine() {
     []
   );
 
+  const loadStrokes = useCallback(
+    (strokes: Stroke[]) => {
+      setState(prev => ({
+        ...prev,
+        strokes,
+        history: [strokes],
+        historyIndex: 0,
+      }));
+    },
+    []
+  );
+
   const undo = useCallback(() => {
     setState(prev => {
       if (prev.historyIndex <= 0) return prev;
@@ -105,6 +117,7 @@ export function useInkEngine() {
     strokes: state.strokes,
     createStroke,
     addStroke,
+    loadStrokes,
     undo,
     redo,
     canUndo: state.historyIndex > 0,
