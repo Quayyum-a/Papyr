@@ -182,7 +182,7 @@ export default function BooksPage() {
             {filteredBooks.map((book) => (
               <Link
                 key={book.id}
-                href={`/dashboard/books/${book.id}/canvas`}
+                href={`/dashboard/books/${book.id}`}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow overflow-hidden group"
               >
                 <div

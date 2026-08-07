@@ -280,6 +280,12 @@ export default function BookCanvasPage() {
           </svg>
           <span className="text-sm font-medium">Back to Books</span>
         </Link>
+        <Link 
+          href={`/dashboard/books/${bookId}`}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Ledger
+        </Link>
         <div className="flex-1" />
         <PapyrLogo href="/dashboard/books" showText={false} />
       </div>
