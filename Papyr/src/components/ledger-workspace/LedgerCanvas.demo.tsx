@@ -17,6 +17,15 @@ export function LedgerCanvasDemo() {
   const [currentPoints, setCurrentPoints] = useState<RawPoint[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  // Add IDs to default columns for LedgerConfig compatibility
+  const ledgerConfig = {
+    ...DEFAULT_LEDGER_CONFIG,
+    columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
+      ...col,
+      id: `default-col-${idx}`,
+    })),
+  };
+
   const getCanvasCoords = (e: React.PointerEvent, canvas: HTMLElement) => {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -119,7 +128,7 @@ export function LedgerCanvasDemo() {
       <div className="flex-1 p-4">
         <div className="w-full h-full border border-gray-300 rounded-lg overflow-hidden">
           <LedgerCanvas
-            ledgerConfig={DEFAULT_LEDGER_CONFIG}
+            ledgerConfig={ledgerConfig}
             strokes={strokes}
             currentStroke={isDrawing ? currentPoints : null}
             currentPenSize={currentPenSize}

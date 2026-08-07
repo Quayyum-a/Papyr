@@ -18,7 +18,17 @@ import type { RawPoint } from '@/lib/ink-engine/types';
 export function LedgerWorkspaceDemo() {
   const { strokes, createStroke, addStroke, undo, redo, canUndo, canRedo, setPenSize, currentPenSize, setPenColor, currentColor } = useInkEngine();
   const { selectedCell, selectedCellId, selectCell } = useCellSelection();
-  const { ledgerConfig, addColumn, editColumn, removeColumn } = useLedgerConfig(DEFAULT_LEDGER_CONFIG);
+
+  // Add IDs to default columns for LedgerConfig compatibility
+  const ledgerConfigWithIds = {
+    ...DEFAULT_LEDGER_CONFIG,
+    columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
+      ...col,
+      id: `default-col-${idx}`,
+    })),
+  };
+
+  const { ledgerConfig, addColumn, editColumn, removeColumn } = useLedgerConfig(ledgerConfigWithIds);
   
   const [currentPoints, setCurrentPoints] = useState<RawPoint[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);

@@ -165,7 +165,7 @@ export interface LedgerCell {
   row_id: string;
   column_id: string;
   content: string;
-  content_type: 'empty' | 'text' | 'number';
+  content_type: 'empty' | 'text' | 'number' | 'ink';
   value?: string; // Optional for backward compatibility
 }
 

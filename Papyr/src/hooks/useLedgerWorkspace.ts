@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useInkEngine } from './useInkEngine';
 import { useCellSelection } from '@/components/ledger-workspace/useCellSelection';
 import { useLedgerConfig } from '@/components/ledger-workspace/useLedgerConfig';
-import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent } from '@/types/ledger';
+import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent, type LedgerConfig, type LedgerColumn } from '@/types/ledger';
 import type { RawPoint } from '@/lib/ink-engine/types';
 
 interface UseLedgerWorkspaceOptions {
@@ -10,6 +10,20 @@ interface UseLedgerWorkspaceOptions {
   pageId: string | null;
   initialContent?: LedgerPageContent;
   onSave?: (content: LedgerPageContent) => Promise<void>;
+}
+
+/**
+ * Ensure ledger config columns have IDs
+ * Database-loaded configs should already have IDs, but DEFAULT_LEDGER_CONFIG does not
+ */
+function ensureColumnIds(config: { columns: Array<Omit<LedgerColumn, 'id'> & { id?: string }>; rowCount: number }): LedgerConfig {
+  return {
+    rowCount: config.rowCount,
+    columns: config.columns.map((col, idx) => ({
+      ...col,
+      id: col.id || `default-col-${idx}`,
+    })) as LedgerColumn[],
+  };
 }
 
 /**
@@ -24,13 +38,13 @@ export function useLedgerWorkspace({
 }: UseLedgerWorkspaceOptions) {
   // Ink engine
   const inkEngine = useInkEngine();
-  
+
   // Cell selection
   const cellSelection = useCellSelection();
-  
-  // Ledger configuration
+
+  // Ledger configuration - ensure columns have IDs
   const ledgerConfig = useLedgerConfig(
-    initialContent?.ledger || DEFAULT_LEDGER_CONFIG
+    initialContent?.ledger ? ensureColumnIds(initialContent.ledger) : ensureColumnIds(DEFAULT_LEDGER_CONFIG)
   );
 
   // Drawing state
