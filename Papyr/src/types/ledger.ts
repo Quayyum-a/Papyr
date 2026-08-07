@@ -162,10 +162,15 @@ export const DEFAULT_COLUMNS = DEFAULT_LEDGER_CONFIG.columns;
  */
 export interface LedgerCell {
   id: string;
-  value: string;
+  row_id: string;
+  column_id: string;
+  content: string;
+  content_type: 'empty' | 'text' | 'number';
+  value?: string; // Optional for backward compatibility
 }
 
 export interface LedgerRow {
   id: string;
+  position?: number; // Optional for backward compatibility
   cells: LedgerCell[];
 }
