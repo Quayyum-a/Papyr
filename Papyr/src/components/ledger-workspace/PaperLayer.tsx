@@ -13,7 +13,11 @@ interface PaperLayerProps {
  */
 export function PaperLayer({ ctx, width, height }: PaperLayerProps) {
   useEffect(() => {
-    if (!ctx || width === 0 || height === 0) return;
+    console.log('PaperLayer render:', { ctx: !!ctx, width, height });
+    if (!ctx || width === 0 || height === 0) {
+      console.warn('PaperLayer: Invalid context or dimensions');
+      return;
+    }
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -24,6 +28,8 @@ export function PaperLayer({ ctx, width, height }: PaperLayerProps) {
 
     // Add subtle paper texture using noise
     addPaperTexture(ctx, width, height);
+    
+    console.log('PaperLayer: Rendered successfully');
   }, [ctx, width, height]);
 
   return null; // This component only renders to canvas, no DOM output

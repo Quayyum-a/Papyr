@@ -16,6 +16,7 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [isReady, setIsReady] = useState(false);
+  const [renderKey, setRenderKey] = useState(0); // Force re-render of layers
 
   // Setup canvases with proper DPI scaling
   useEffect(() => {
@@ -63,6 +64,7 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
       });
 
       // Scale contexts for DPI
+      // Note: Setting canvas.width/height resets the context, so we need to reapply scaling
       [paperCtx, gridCtx, inkCtx].forEach(ctx => {
         ctx.scale(dpr, dpr);
         ctx.imageSmoothingEnabled = true;
@@ -71,6 +73,9 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
 
       setCanvasSize({ width: displayWidth, height: displayHeight });
       setIsReady(true);
+      setRenderKey(prev => prev + 1); // Trigger layer re-render
+      
+      console.log('Canvas contexts scaled and ready, DPR:', dpr);
       return true;
     };
 
@@ -111,5 +116,6 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
     inkCtx: inkCtxRef.current,
     canvasSize,
     isReady,
+    renderKey, // Used to force layer re-renders
   };
 }
