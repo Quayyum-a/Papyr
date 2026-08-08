@@ -14,7 +14,11 @@ interface GridLayerProps {
  */
 export function GridLayer({ ctx, width, height, ledgerConfig }: GridLayerProps) {
   useEffect(() => {
-    if (!ctx || width === 0 || height === 0) return;
+    console.log('GridLayer render:', { ctx: !!ctx, width, height, columns: ledgerConfig.columns.length });
+    if (!ctx || width === 0 || height === 0) {
+      console.warn('GridLayer: Invalid context or dimensions');
+      return;
+    }
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -24,6 +28,8 @@ export function GridLayer({ ctx, width, height, ledgerConfig }: GridLayerProps) 
 
     // Draw vertical column dividers
     drawColumnLines(ctx, height, ledgerConfig);
+    
+    console.log('GridLayer: Rendered successfully');
   }, [ctx, width, height, ledgerConfig]);
 
   return null; // This component only renders to canvas, no DOM output

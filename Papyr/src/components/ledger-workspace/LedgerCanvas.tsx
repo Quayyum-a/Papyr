@@ -53,6 +53,7 @@ export function LedgerCanvas({
     inkCtx,
     canvasSize,
     isReady,
+    renderKey,
   } = useLedgerCanvas(ledgerConfig);
 
   return (
@@ -109,17 +110,20 @@ export function LedgerCanvas({
       {isReady && (
         <>
           <PaperLayer
+            key={`paper-${renderKey}`}
             ctx={paperCtx}
             width={canvasSize.width}
             height={canvasSize.height}
           />
           <GridLayer
+            key={`grid-${renderKey}`}
             ctx={gridCtx}
             width={canvasSize.width}
             height={canvasSize.height}
             ledgerConfig={ledgerConfig}
           />
           <InkLayer
+            key={`ink-${renderKey}`}
             ctx={inkCtx}
             width={canvasSize.width}
             height={canvasSize.height}
