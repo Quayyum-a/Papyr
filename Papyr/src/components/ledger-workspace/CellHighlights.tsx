@@ -209,7 +209,6 @@ export function CellHighlights({
 
       {/* Render grid of cells */}
       {Array.from({ length: rowCount }).map((_, rowIndex) => {
-        let xOffset = 0;
 
         return (
           <div
@@ -223,9 +222,6 @@ export function CellHighlights({
             }}
           >
             {sortedColumns.map((column, columnIndex) => {
-              const cellXOffset = xOffset;
-              xOffset += column.width;
-
               const isSelected =
                 !!selectedCell &&
                 selectedCell.columnIndex === columnIndex &&
@@ -248,7 +244,6 @@ export function CellHighlights({
                   style={{
                     width: column.width,
                     height: LEDGER_CONSTANTS.ROW_HEIGHT,
-                    left: cellXOffset,
                     outline: 'none',
                   }}
                   onClick={() => handleCellClick(columnIndex, rowIndex)}

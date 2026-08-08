@@ -184,6 +184,7 @@ export function ColumnHeaders({
             onPointerDown={() => handlePointerDown(column)}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerUp}
+            onDoubleClick={() => startEditing(column)}
             onMouseEnter={() => setHoveredColumnId(column.id)}
             onMouseLeave={() => setHoveredColumnId(null)}
             onFocus={() => setFocusedColumnIndex(columnIndex)}

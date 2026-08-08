@@ -4,10 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
-import { LedgerPage } from '@/components/ledger/LedgerPage';
 import { LedgerWorkspace } from '@/components/ledger-workspace/LedgerWorkspace';
 import { PapyrLogo } from '@/components/PapyrLogo';
-import { User, ChevronLeft } from 'lucide-react';
+import { ChevronLeft, User } from 'lucide-react';
 import Link from 'next/link';
 import type { Book } from '@/types/book';
 import type { LedgerPageContent } from '@/types/ledger';
@@ -129,10 +128,10 @@ export default function BookLedgerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* App Header */}
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
             <div className="flex items-center gap-4">
               <Link
@@ -143,20 +142,13 @@ export default function BookLedgerPage() {
                 <ChevronLeft className="w-6 h-6 text-gray-600" />
               </Link>
               <PapyrLogo />
+              {book && (
+                <h1 className="text-lg font-semibold text-gray-900 truncate max-w-[300px]">
+                  {book.title}
+                </h1>
+              )}
             </div>
             <div className="flex items-center gap-3">
-              <Link
-                href={`/dashboard/books/${bookId}/ledger`}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                ✍️ Workspace
-              </Link>
-              <Link
-                href={`/dashboard/books/${bookId}/canvas`}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Canvas
-              </Link>
               <Link
                 href="/profile"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -169,18 +161,14 @@ export default function BookLedgerPage() {
         </div>
       </header>
 
-      {/* Ledger Workspace */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <LedgerPage bookTitle={book?.title}>
-          <div className="h-[calc(100vh-200px)] min-h-[500px]">
-            <LedgerWorkspace
-              bookId={bookId}
-              pageId={pageId}
-              initialContent={pageContent || undefined}
-              className="h-full"
-            />
-          </div>
-        </LedgerPage>
+      {/* Ledger Workspace - fills remaining viewport */}
+      <div className="flex-1 min-h-0">
+        <LedgerWorkspace
+          bookId={bookId}
+          pageId={pageId}
+          initialContent={pageContent || undefined}
+          className="h-full w-full"
+        />
       </div>
     </div>
   );

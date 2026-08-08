@@ -4,7 +4,7 @@ import { useLedgerCanvas } from './useLedgerCanvas';
 import { PaperLayer } from './PaperLayer';
 import { GridLayer } from './GridLayer';
 import { InkLayer } from './InkLayer';
-import type { LedgerConfig } from '@/types/ledger';
+import type { LedgerConfig, CellCoordinates } from '@/types/ledger';
 import type { Stroke, RawPoint, PenSize } from '@/lib/ink-engine/types';
 
 interface LedgerCanvasProps {
@@ -13,6 +13,7 @@ interface LedgerCanvasProps {
   currentStroke: RawPoint[] | null;
   currentPenSize: PenSize;
   currentColor: string;
+  selectedCell: CellCoordinates | null;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -36,6 +37,7 @@ export function LedgerCanvas({
   currentStroke,
   currentPenSize,
   currentColor,
+  selectedCell,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -125,6 +127,8 @@ export function LedgerCanvas({
             currentStroke={currentStroke}
             currentPenSize={currentPenSize}
             currentColor={currentColor}
+            selectedCell={selectedCell}
+            ledgerConfig={ledgerConfig}
           />
         </>
       )}

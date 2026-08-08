@@ -51,6 +51,7 @@ export function LedgerWorkspace({
     addColumn,
     editColumn,
     removeColumn,
+    setLedgerConfig,
 
     // Drawing state
     isDrawing,
@@ -123,13 +124,13 @@ export function LedgerWorkspace({
 
   return (
     <div className={`relative w-full h-full ${className}`} role="application" aria-label="Ledger workspace">
-      {/* Toolbar */}
+      {/* Toolbar - Vertical on right side */}
       <div
-        className="absolute top-0 left-0 right-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-3 py-2 flex items-center gap-3 flex-wrap"
+        className="absolute top-0 right-0 h-full z-10 bg-white/95 backdrop-blur-sm border-l border-gray-200 px-2 py-3 flex flex-col items-center gap-4"
         role="toolbar"
         aria-label="Ledger toolbar"
       >
-        <div className="flex gap-1" role="group" aria-label="History">
+        <div className="flex flex-col gap-1" role="group" aria-label="History">
           <button
             onClick={undo}
             disabled={!canUndo}
@@ -156,15 +157,15 @@ export function LedgerWorkspace({
           </button>
         </div>
 
-        <div className="w-px h-6 bg-gray-300 mx-2" aria-hidden="true" />
+        <div className="h-px w-full bg-gray-300 my-2" aria-hidden="true" />
 
-        <div className="flex items-center gap-2" role="group" aria-label="Pen settings">
+        <div className="flex flex-col items-center gap-2" role="group" aria-label="Pen settings">
           <label htmlFor="pen-size" className="text-xs text-gray-500">Pen:</label>
           <select
             id="pen-size"
             value={currentPenSize}
             onChange={e => setPenSize(e.target.value as any)}
-            className="px-2 py-1 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[44px] min-h-[44px]"
+            className="px-2 py-1 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[44px] min-h-[44px] w-full text-center"
             aria-label="Pen size"
           >
             <option value="extra-fine">Extra Fine</option>
@@ -175,7 +176,9 @@ export function LedgerWorkspace({
           </select>
         </div>
 
-        <div className="flex items-center gap-2" role="group" aria-label="Color picker">
+        <div className="h-px w-full bg-gray-300 my-2" aria-hidden="true" />
+
+        <div className="flex flex-col items-center gap-2" role="group" aria-label="Color picker">
           <label htmlFor="pen-color" className="text-xs text-gray-500">Color:</label>
           <input
             id="pen-color"
@@ -188,11 +191,13 @@ export function LedgerWorkspace({
           />
         </div>
 
-        <div className="ml-auto flex items-center gap-4 text-xs text-gray-500" aria-live="polite" aria-atomic="true">
+        <div className="h-px w-full bg-gray-300 my-2" aria-hidden="true" />
+
+        <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-auto" aria-live="polite" aria-atomic="true">
           <span>{strokes.length} strokes</span>
           <span>{ledgerConfig.columns.length} columns</span>
           {selectedCell && (
-            <span className="text-blue-600 font-medium" aria-label={`Selected cell: column ${selectedCell.columnIndex + 1}, row ${selectedCell.rowIndex + 1}`}>
+            <span className="text-blue-600 font-medium text-center" aria-label={`Selected cell: column ${selectedCell.columnIndex + 1}, row ${selectedCell.rowIndex + 1}`}>
               Cell: {selectedCell.columnIndex + 1}, {selectedCell.rowIndex + 1}
             </span>
           )}
@@ -204,7 +209,6 @@ export function LedgerWorkspace({
       <div className="relative w-full h-full">
         <div
           className="absolute inset-0 border border-gray-300 rounded-lg overflow-hidden bg-white"
-          style={{ top: '44px' }}
           role="region"
           aria-label="Ledger grid"
         >
@@ -215,6 +219,7 @@ export function LedgerWorkspace({
             currentStroke={currentPoints}
             currentPenSize={currentPenSize}
             currentColor={currentColor}
+            selectedCell={selectedCell}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
