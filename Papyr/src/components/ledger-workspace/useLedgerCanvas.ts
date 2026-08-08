@@ -81,15 +81,18 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
 
     // Try to setup canvases, retry if container has no dimensions yet
     let retryCount = 0;
-    const maxRetries = 10;
+    const maxRetries = 20; // Increased to allow more time for layout
+    const retryDelay = 50; // ms between retries
     
     const trySetup = () => {
       const success = setupCanvases();
       
-      // If setup failed and we haven't exceeded retries, try again next frame
+      // If setup failed and we haven't exceeded retries, try again after delay
       if (!success && retryCount < maxRetries) {
         retryCount++;
         requestAnimationFrame(trySetup);
+      } else if (!success) {
+        console.error(`Canvas setup failed after ${maxRetries} attempts. Container may not have dimensions.`);
       }
     };
     
