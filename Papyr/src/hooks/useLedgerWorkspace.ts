@@ -103,12 +103,15 @@ export function useLedgerWorkspace({
     // Ignore if another pointer is already active
     if (activePointerIdRef.current !== null) return;
 
+    // Require an active cell selection to start drawing
+    if (!cellSelection.selectedCell) return;
+
     const target = e.currentTarget;
     const rect = target.getBoundingClientRect();
-    
+
     activePointerIdRef.current = e.pointerId;
     setIsDrawing(true);
-    
+
     // Try to capture pointer
     try {
       target.setPointerCapture(e.pointerId);
@@ -124,7 +127,7 @@ export function useLedgerWorkspace({
       tiltX: e.tiltX,
       tiltY: e.tiltY,
     }]);
-  }, []);
+  }, [cellSelection.selectedCell]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Ignore if not the active pointer

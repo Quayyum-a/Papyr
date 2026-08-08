@@ -46,6 +46,14 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
       const displayWidth = rect.width;
       const displayHeight = rect.height;
 
+      // Skip if container has no size yet (prevents blank canvas)
+      if (displayWidth === 0 || displayHeight === 0) {
+        console.warn('Canvas container has zero dimensions, will retry...');
+        return false;
+      }
+
+      console.log(`Canvas setup successful: ${displayWidth}x${displayHeight}`);
+
       // Set actual size in memory (scaled by DPI)
       [paperCanvas, gridCanvas, inkCanvas].forEach(canvas => {
         canvas.width = displayWidth * dpr;
@@ -63,9 +71,24 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
 
       setCanvasSize({ width: displayWidth, height: displayHeight });
       setIsReady(true);
+      return true;
     };
 
-    setupCanvases();
+    // Try to setup canvases, retry if container has no dimensions yet
+    let retryCount = 0;
+    const maxRetries = 10;
+    
+    const trySetup = () => {
+      const success = setupCanvases();
+      
+      // If setup failed and we haven't exceeded retries, try again next frame
+      if (!success && retryCount < maxRetries) {
+        retryCount++;
+        requestAnimationFrame(trySetup);
+      }
+    };
+    
+    trySetup();
 
     // Handle window resize
     const handleResize = () => {

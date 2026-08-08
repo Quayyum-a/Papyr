@@ -174,3 +174,59 @@ export interface LedgerRow {
   position?: number; // Optional for backward compatibility
   cells: LedgerCell[];
 }
+
+/**
+ * Create default ledger page content
+ * Used when creating a new page for a book
+ */
+export function createDefaultLedgerPageContent(): LedgerPageContent {
+  return {
+    strokes: [],
+    ledger: {
+      columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
+        ...col,
+        id: `col-${idx}`,
+      })),
+      rowCount: DEFAULT_LEDGER_CONFIG.rowCount,
+    },
+  };
+}
+
+/**
+ * Compute the bounding box of a cell in canvas coordinates
+ * @param ledgerConfig - The ledger configuration with columns
+ * @param columnIndex - Column index (0-based)
+ * @param rowIndex - Row index (0-based)
+ * @returns Object with x, y, width, height in canvas coordinates
+ */
+export function getCellBounds(
+  ledgerConfig: LedgerConfig,
+  columnIndex: number,
+  rowIndex: number
+): { x: number; y: number; width: number; height: number } | null {
+  const sortedColumns = [...ledgerConfig.columns].sort((a, b) => a.position - b.position);
+
+  if (columnIndex < 0 || columnIndex >= sortedColumns.length) {
+    return null;
+  }
+
+  if (rowIndex < 0 || rowIndex >= ledgerConfig.rowCount) {
+    return null;
+  }
+
+  // Compute x offset by summing widths of preceding columns
+  let x = 0;
+  for (let i = 0; i < columnIndex; i++) {
+    x += sortedColumns[i].width;
+  }
+
+  const column = sortedColumns[columnIndex];
+  const y = LEDGER_CONSTANTS.HEADER_HEIGHT + rowIndex * LEDGER_CONSTANTS.ROW_HEIGHT;
+
+  return {
+    x,
+    y,
+    width: column.width,
+    height: LEDGER_CONSTANTS.ROW_HEIGHT,
+  };
+}

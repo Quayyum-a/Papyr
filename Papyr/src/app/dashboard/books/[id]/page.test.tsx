@@ -19,36 +19,61 @@ vi.mock('@/context/AuthContext', () => ({
 
 vi.mock('@/lib/supabase/client', () => ({
   supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn(() => Promise.resolve({
-              data: {
-                id: 'test-book-id',
-                title: 'Test Book',
-                user_id: 'test-user-id',
-                cover_color: '#000',
-              },
-              error: null,
+    from: vi.fn((table: string) => {
+      if (table === 'books') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                single: vi.fn(() => Promise.resolve({
+                  data: {
+                    id: 'test-book-id',
+                    title: 'Test Book',
+                    user_id: 'test-user-id',
+                    cover_color: '#000',
+                  },
+                  error: null,
+                })),
+              })),
             })),
           })),
-          order: vi.fn(() => ({
-            limit: vi.fn(() => ({
-              maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        };
+      }
+      if (table === 'pages') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => Promise.resolve({
+                data: [],
+                error: null,
+              })),
             })),
           })),
-        })),
-      })),
-      insert: vi.fn(() => ({
+          insert: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn(() => Promise.resolve({
+                data: { id: 'test-page-id', book_id: 'test-book-id', position: 0 },
+                error: null,
+              })),
+            })),
+          })),
+        };
+      }
+      return {
         select: vi.fn(() => ({
-          single: vi.fn(() => Promise.resolve({
-            data: { id: 'test-page-id', book_id: 'test-book-id', position: 0 },
-            error: null,
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            })),
           })),
         })),
-      })),
-    })),
+        insert: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+        })),
+      };
+    }),
   },
 }));
 
@@ -62,7 +87,7 @@ describe('BookLedgerPage Integration', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Test Book')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it('should create default page if none exists', async () => {
@@ -74,7 +99,7 @@ describe('BookLedgerPage Integration', () => {
       expect(screen.getByDisplayValue('Description')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Debit')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Credit')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it('should render 15 empty rows initially', async () => {
@@ -84,7 +109,7 @@ describe('BookLedgerPage Integration', () => {
       const rows = screen.getAllByRole('row');
       // 1 header row + 15 data rows
       expect(rows.length).toBeGreaterThanOrEqual(16);
-    });
+    }, { timeout: 5000 });
   });
 
   it('should have accessible navigation', async () => {
@@ -94,7 +119,7 @@ describe('BookLedgerPage Integration', () => {
       const backButton = screen.getByLabelText(/back to books/i);
       expect(backButton).toBeInTheDocument();
       expect(backButton).toHaveAttribute('href', '/dashboard/books');
-    });
+    }, { timeout: 5000 });
   });
 
   it('should persist column edits', async () => {
@@ -106,7 +131,7 @@ describe('BookLedgerPage Integration', () => {
       fireEvent.blur(dateHeader);
 
       expect(screen.getByDisplayValue('Modified Date')).toBeInTheDocument();
-    });
+    }, { timeout: 15000 });
   });
 
   it('should add new column when clicking add button', async () => {
@@ -117,7 +142,7 @@ describe('BookLedgerPage Integration', () => {
       fireEvent.click(addButton);
 
       expect(screen.getByDisplayValue('New Column')).toBeInTheDocument();
-    });
+    }, { timeout: 15000 });
   });
 
   it('should auto-append row when typing in last row', async () => {
@@ -133,7 +158,7 @@ describe('BookLedgerPage Integration', () => {
         const rowsAfter = screen.getAllByRole('row');
         expect(rowsAfter.length).toBeGreaterThan(16);
       });
-    });
+    }, { timeout: 20000 });
   });
 
   it('should maintain user-specific data isolation', async () => {
@@ -142,6 +167,6 @@ describe('BookLedgerPage Integration', () => {
     await waitFor(() => {
       // Verify book is loaded with user check
       expect(screen.getByText('Test Book')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 });

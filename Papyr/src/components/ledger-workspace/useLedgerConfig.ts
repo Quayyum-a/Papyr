@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { type LedgerConfig, type LedgerColumn, LEDGER_CONSTANTS } from '@/types/ledger';
 
@@ -18,6 +18,21 @@ export function useLedgerConfig(
   initialConfig: LedgerConfig
 ): UseLedgerConfigReturn {
   const [ledgerConfig, setLedgerConfig] = useState<LedgerConfig>(initialConfig);
+  const prevConfigRef = useRef<string>('');
+
+  // Update ledger config when initialConfig changes (e.g., when initialContent loads)
+  // Use JSON string comparison to avoid infinite loops from new object references
+  useEffect(() => {
+    const configString = JSON.stringify({
+      columns: initialConfig.columns.map(c => ({ id: c.id, label: c.label, width: c.width, position: c.position })),
+      rowCount: initialConfig.rowCount,
+    });
+
+    if (configString !== prevConfigRef.current) {
+      prevConfigRef.current = configString;
+      setLedgerConfig(initialConfig);
+    }
+  }, [initialConfig]);
 
   const addColumn = useCallback(() => {
     setLedgerConfig((prev) => {
