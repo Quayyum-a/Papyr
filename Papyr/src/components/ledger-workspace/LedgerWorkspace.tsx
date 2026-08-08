@@ -124,17 +124,18 @@ export function LedgerWorkspace({
 
   return (
     <div className={`relative w-full h-full ${className}`} role="application" aria-label="Ledger workspace">
-      {/* Toolbar - Vertical on right side */}
+      {/* Toolbar - Vertical on right side, floating */}
       <div
-        className="absolute top-0 right-0 h-full z-10 bg-white/95 backdrop-blur-sm border-l border-gray-200 px-2 py-3 flex flex-col items-center gap-4"
+        className="absolute top-0 right-0 h-full z-10 bg-white/90 backdrop-blur-sm shadow-lg px-3 py-4 flex flex-col items-center gap-4"
         role="toolbar"
         aria-label="Ledger toolbar"
+        style={{ width: '80px' }}
       >
-        <div className="flex flex-col gap-1" role="group" aria-label="History">
+        <div className="flex flex-col gap-2" role="group" aria-label="History">
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full aspect-square flex items-center justify-center"
             aria-label="Undo (Ctrl+Z)"
             aria-disabled={!canUndo}
             title="Undo (Ctrl+Z)"
@@ -146,7 +147,7 @@ export function LedgerWorkspace({
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full aspect-square flex items-center justify-center"
             aria-label="Redo (Ctrl+Shift+Z)"
             aria-disabled={!canRedo}
             title="Redo (Ctrl+Shift+Z)"
@@ -157,51 +158,55 @@ export function LedgerWorkspace({
           </button>
         </div>
 
-        <div className="h-px w-full bg-gray-300 my-2" aria-hidden="true" />
+        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
 
-        <div className="flex flex-col items-center gap-2" role="group" aria-label="Pen settings">
-          <label htmlFor="pen-size" className="text-xs text-gray-500">Pen:</label>
+        <div className="flex flex-col items-center gap-2 w-full" role="group" aria-label="Pen settings">
+          <label htmlFor="pen-size" className="text-xs text-gray-500 font-medium">Pen</label>
           <select
             id="pen-size"
             value={currentPenSize}
             onChange={e => setPenSize(e.target.value as any)}
-            className="px-2 py-1 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[44px] min-h-[44px] w-full text-center"
+            className="px-1 py-2 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-center"
             aria-label="Pen size"
           >
-            <option value="extra-fine">Extra Fine</option>
+            <option value="extra-fine">XFine</option>
             <option value="fine">Fine</option>
-            <option value="medium">Medium</option>
+            <option value="medium">Med</option>
             <option value="bold">Bold</option>
-            <option value="marker">Marker</option>
+            <option value="marker">Mark</option>
           </select>
         </div>
 
-        <div className="h-px w-full bg-gray-300 my-2" aria-hidden="true" />
+        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
 
-        <div className="flex flex-col items-center gap-2" role="group" aria-label="Color picker">
-          <label htmlFor="pen-color" className="text-xs text-gray-500">Color:</label>
+        <div className="flex flex-col items-center gap-2 w-full" role="group" aria-label="Color picker">
+          <label htmlFor="pen-color" className="text-xs text-gray-500 font-medium">Color</label>
           <input
             id="pen-color"
             type="color"
             value={currentColor}
             onChange={e => setPenColor(e.target.value)}
-            className="w-8 h-8 rounded border border-gray-300 cursor-pointer min-w-[44px] min-h-[44px]"
+            className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
             aria-label="Pen color"
             title="Pen color"
           />
         </div>
 
-        <div className="h-px w-full bg-gray-300 my-2" aria-hidden="true" />
+        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
 
-        <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-auto" aria-live="polite" aria-atomic="true">
-          <span>{strokes.length} strokes</span>
-          <span>{ledgerConfig.columns.length} columns</span>
+        <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-auto text-center" aria-live="polite" aria-atomic="true">
+          <span className="font-medium">{strokes.length}</span>
+          <span className="text-[10px] leading-tight">strokes</span>
+          <span className="font-medium mt-1">{ledgerConfig.columns.length}</span>
+          <span className="text-[10px] leading-tight">columns</span>
           {selectedCell && (
-            <span className="text-blue-600 font-medium text-center" aria-label={`Selected cell: column ${selectedCell.columnIndex + 1}, row ${selectedCell.rowIndex + 1}`}>
-              Cell: {selectedCell.columnIndex + 1}, {selectedCell.rowIndex + 1}
-            </span>
+            <>
+              <span className="text-blue-600 font-medium mt-2" aria-label={`Selected cell: column ${selectedCell.columnIndex + 1}, row ${selectedCell.rowIndex + 1}`}>
+                {selectedCell.columnIndex + 1},{selectedCell.rowIndex + 1}
+              </span>
+            </>
           )}
-          {isSaving && <span className="text-yellow-600" aria-label="Saving changes">Saving…</span>}
+          {isSaving && <span className="text-yellow-600 mt-2" aria-label="Saving changes">Saving…</span>}
         </div>
       </div>
 

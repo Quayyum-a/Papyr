@@ -208,70 +208,67 @@ export function CellHighlights({
       />
 
       {/* Render grid of cells */}
-      {Array.from({ length: rowCount }).map((_, rowIndex) => {
+      {Array.from({ length: rowCount }).map((_, rowIndex) => (
+        <div
+          key={rowIndex}
+          className="absolute left-0 right-0 flex"
+          role="row"
+          aria-rowindex={rowIndex + 1}
+          style={{
+            top: rowIndex * LEDGER_CONSTANTS.ROW_HEIGHT,
+            height: LEDGER_CONSTANTS.ROW_HEIGHT,
+          }}
+        >
+          {sortedColumns.map((column, columnIndex) => {
+            const isSelected =
+              !!selectedCell &&
+              selectedCell.columnIndex === columnIndex &&
+              selectedCell.rowIndex === rowIndex;
 
-        return (
-          <div
-            key={rowIndex}
-            className="absolute left-0 right-0 flex"
-            role="row"
-            aria-rowindex={rowIndex + 1}
-            style={{
-              top: rowIndex * LEDGER_CONSTANTS.ROW_HEIGHT,
-              height: LEDGER_CONSTANTS.ROW_HEIGHT,
-            }}
-          >
-            {sortedColumns.map((column, columnIndex) => {
-              const isSelected =
-                !!selectedCell &&
-                selectedCell.columnIndex === columnIndex &&
-                selectedCell.rowIndex === rowIndex;
+            const isFocused =
+              focusedCell &&
+              focusedCell.columnIndex === columnIndex &&
+              focusedCell.rowIndex === rowIndex;
 
-              const isFocused =
-                focusedCell &&
-                focusedCell.columnIndex === columnIndex &&
-                focusedCell.rowIndex === rowIndex;
+            const cellKey = `${columnIndex}-${rowIndex}`;
 
-              const cellKey = `${columnIndex}-${rowIndex}`;
-
-              return (
-                <div
-                  key={column.id}
-                  ref={(el) => { if (el) cellRefsRef.current.set(cellKey, el); }}
-                  className={`relative cursor-pointer transition-all duration-100 ease-out ${
-                    isSelected ? 'bg-yellow-50' : 'hover:bg-gray-50'
-                  } ${isFocused ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
-                  style={{
-                    width: column.width,
-                    height: LEDGER_CONSTANTS.ROW_HEIGHT,
-                    outline: 'none',
-                  }}
-                  onClick={() => handleCellClick(columnIndex, rowIndex)}
-                  onKeyDown={(e) => handleCellKeyDown(e, columnIndex, rowIndex)}
-                  role="gridcell"
-                  tabIndex={isFocused || isSelected ? 0 : -1}
-                  aria-label={`${column.label}, Row ${rowIndex + 1}`}
-                  aria-selected={isSelected}
-                  aria-colindex={columnIndex + 1}
-                  aria-rowindex={rowIndex + 1}
-                >
-                  {/* Selected cell highlight with smooth transition */}
-                  {isSelected && (
-                    <div
-                      className="absolute inset-0 pointer-events-none transition-opacity duration-100"
-                      style={{
-                        backgroundColor: LEDGER_CONSTANTS.CELL_HIGHLIGHT_COLOR,
-                        opacity: LEDGER_CONSTANTS.CELL_HIGHLIGHT_OPACITY,
-                      }}
-                      aria-hidden="true"
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
+            return (
+              <div
+                key={column.id}
+                ref={(el) => { if (el) cellRefsRef.current.set(cellKey, el); }}
+                className={`relative cursor-pointer transition-all duration-100 ease-out ${
+                  isSelected ? 'bg-yellow-50' : 'hover:bg-gray-50'
+                } ${isFocused ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+                style={{
+                  width: column.width,
+                  height: LEDGER_CONSTANTS.ROW_HEIGHT,
+                  outline: 'none',
+                }}
+                onClick={() => handleCellClick(columnIndex, rowIndex)}
+                onKeyDown={(e) => handleCellKeyDown(e, columnIndex, rowIndex)}
+                role="gridcell"
+                tabIndex={isFocused || isSelected ? 0 : -1}
+                aria-label={`${column.label}, Row ${rowIndex + 1}`}
+                aria-selected={isSelected}
+                aria-colindex={columnIndex + 1}
+                aria-rowindex={rowIndex + 1}
+              >
+                {/* Selected cell highlight with smooth transition */}
+                {isSelected && (
+                  <div
+                    className="absolute inset-0 pointer-events-none transition-opacity duration-100"
+                    style={{
+                      backgroundColor: LEDGER_CONSTANTS.CELL_HIGHLIGHT_COLOR,
+                      opacity: LEDGER_CONSTANTS.CELL_HIGHLIGHT_OPACITY,
+                    }}
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

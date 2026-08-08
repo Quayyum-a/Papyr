@@ -80,34 +80,12 @@ export function InkLayer({
       offscreenCtx.clearRect(0, 0, width, height);
 
       // Render all completed strokes to offscreen canvas
+      // Completed strokes are rendered at their stored positions without clipping
+      // (they were already clipped when drawn under their cell's selection)
       for (const stroke of strokes) {
-        // Check if this stroke belongs to the currently selected cell
-        const strokeCellId = (stroke as any).cell_id;
-        if (strokeCellId && selectedCell) {
-          const selectedCellId = `col-${selectedCell.columnIndex}-row-${selectedCell.rowIndex}`;
-          if (strokeCellId === selectedCellId) {
-            // Clip to the selected cell's bounds
-            const bounds = getCellBounds(ledgerConfig, selectedCell.columnIndex, selectedCell.rowIndex);
-            if (bounds) {
-              offscreenCtx.save();
-              offscreenCtx.beginPath();
-              offscreenCtx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
-              offscreenCtx.clip();
-            }
-          }
-        }
-
         offscreenCtx.fillStyle = stroke.color;
         for (const segment of stroke.segments) {
           renderer.drawSegment(offscreenCtx, segment);
-        }
-
-        // Restore clipping if we clipped
-        if (strokeCellId && selectedCell) {
-          const selectedCellId = `col-${selectedCell.columnIndex}-row-${selectedCell.rowIndex}`;
-          if (strokeCellId === selectedCellId) {
-            offscreenCtx.restore();
-          }
         }
       }
 
@@ -128,7 +106,7 @@ export function InkLayer({
       }
     }
 
-    // Render current stroke (if drawing) - clip to selected cell if drawing in selected cell
+    // Render current stroke (if drawing) - clip to selected cell bounds
     if (currentStroke && currentStroke.length > 1 && selectedCell) {
       const bounds = getCellBounds(ledgerConfig, selectedCell.columnIndex, selectedCell.rowIndex);
       if (bounds) {
@@ -136,23 +114,14 @@ export function InkLayer({
         ctx.beginPath();
         ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         ctx.clip();
-      }
 
-      const tailSegments = renderer.renderStrokeTail(currentStroke);
-      ctx.fillStyle = currentColor;
-      for (const segment of tailSegments) {
-        renderer.drawSegment(ctx, segment, 10); // Fewer steps for real-time
-      }
+        const tailSegments = renderer.renderStrokeTail(currentStroke);
+        ctx.fillStyle = currentColor;
+        for (const segment of tailSegments) {
+          renderer.drawSegment(ctx, segment, 10); // Fewer steps for real-time
+        }
 
-      if (bounds) {
         ctx.restore();
-      }
-    } else if (currentStroke && currentStroke.length > 1) {
-      // No cell selected - render without clipping (shouldn't happen with current logic)
-      const tailSegments = renderer.renderStrokeTail(currentStroke);
-      ctx.fillStyle = currentColor;
-      for (const segment of tailSegments) {
-        renderer.drawSegment(ctx, segment, 10);
       }
     }
   }, [ctx, width, height, strokes, currentStroke, currentColor, selectedCell, ledgerConfig]);
