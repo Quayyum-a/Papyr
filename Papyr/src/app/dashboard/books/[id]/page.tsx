@@ -128,9 +128,9 @@ export default function BookLedgerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* App Header */}
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-10">
+      <header className="bg-white shadow-sm border-b border-gray-100 flex-shrink-0 z-10">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
             <div className="flex items-center gap-4">
@@ -162,7 +162,7 @@ export default function BookLedgerPage() {
       </header>
 
       {/* Ledger Workspace - fills remaining viewport */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 overflow-hidden">
         <LedgerWorkspace
           bookId={bookId}
           pageId={pageId}
