@@ -57,6 +57,11 @@ export function useLedgerWorkspace({
   // Recognition state
   const [recognizingCells, setRecognizingCells] = useState<Set<string>>(new Set());
   
+  // Cell data state (recognized text and typed values)
+  const [cells, setCells] = useState<Record<string, import('@/types/ledger').LedgerCellData>>(
+    initialContent?.cells || {}
+  );
+  
   // Refs
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
@@ -94,6 +99,7 @@ export function useLedgerWorkspace({
         const content: LedgerPageContent = {
           strokes: inkEngine.strokes,
           ledger: ledgerConfig.ledgerConfig,
+          cells,
         };
         await onSave(content);
       } catch (error) {
@@ -102,14 +108,14 @@ export function useLedgerWorkspace({
         setIsSaving(false);
       }
     }, 500);
-  }, [onSave, inkEngine.strokes, ledgerConfig.ledgerConfig]);
+  }, [onSave, inkEngine.strokes, ledgerConfig.ledgerConfig, cells]);
 
-  // Trigger save when strokes or config changes
+  // Trigger save when strokes, config, or cells change
   useEffect(() => {
-    if (inkEngine.strokes.length > 0 || ledgerConfig.ledgerConfig.columns.length > 0) {
+    if (inkEngine.strokes.length > 0 || ledgerConfig.ledgerConfig.columns.length > 0 || Object.keys(cells).length > 0) {
       debouncedSave();
     }
-  }, [inkEngine.strokes.length, ledgerConfig.ledgerConfig, debouncedSave]);
+  }, [inkEngine.strokes.length, ledgerConfig.ledgerConfig, cells, debouncedSave]);
 
   // Setup handwriting session event listeners for recognition
   useEffect(() => {
@@ -166,7 +172,7 @@ export function useLedgerWorkspace({
         // Call recognition API
         const recognizedText = await recognizeInk(imageData, columnLabel);
         
-        if (recognizedText !== null) {
+        if (recognizedText !== null && recognizedText !== '') {
           console.log('[INK] RECOGNITION_SUCCESS', {
             segmentId: segment.id,
             text: recognizedText,
@@ -175,11 +181,19 @@ export function useLedgerWorkspace({
           // Mark segment as recognized with the result
           sessionManager.markSegmentRecognized(segment.id, recognizedText);
           
-          // TODO: Store recognized text in cell data structure
-          // For now, just log it
+          // Store recognized text in cell data
+          setCells(prevCells => ({
+            ...prevCells,
+            [cellId]: {
+              cellId,
+              value: recognizedText,
+              content_type: 'text',
+            },
+          }));
         } else {
-          console.warn('[INK] RECOGNITION_FAILED', { segmentId: segment.id });
+          console.warn('[INK] RECOGNITION_FAILED or empty', { segmentId: segment.id, result: recognizedText });
           sessionManager.markSegmentRecognized(segment.id);
+          // Don't modify cell data on failure or empty result
         }
       } catch (error) {
         console.error('[INK] Recognition error:', error);
@@ -347,6 +361,10 @@ export function useLedgerWorkspace({
     // Recognition state
     recognizingCells,
     inkCanvasRef,
+    
+    // Cell data
+    cells,
+    getCellValue: useCallback((cellId: string) => cells[cellId]?.value, [cells]),
     
     // Pointer handlers
     handlePointerDown,

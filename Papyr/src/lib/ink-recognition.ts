@@ -5,11 +5,12 @@
  * via OpenRouter vision models.
  */
 
-import { getCellBounds, type LedgerConfig, type CellCoordinates } from '@/types/ledger';
+import { getCellBounds, getExpandedCellBounds, type LedgerConfig, type CellCoordinates } from '@/types/ledger';
 import type { Stroke } from './ink-engine/types';
 
 /**
  * Captures the ink within a specific cell as a base64 PNG data URL
+ * Uses expanded cell bounds to capture the full active writing zone
  * 
  * @param inkCanvas - The canvas element containing all ink strokes
  * @param ledgerConfig - The ledger configuration with column definitions
@@ -21,7 +22,8 @@ export function captureCellImage(
   ledgerConfig: LedgerConfig,
   cellCoords: CellCoordinates
 ): string | null {
-  const bounds = getCellBounds(ledgerConfig, cellCoords.columnIndex, cellCoords.rowIndex);
+  // Use expanded bounds for active cells to capture the full writing zone
+  const bounds = getExpandedCellBounds(ledgerConfig, cellCoords.columnIndex, cellCoords.rowIndex);
   
   if (!bounds) {
     return null;

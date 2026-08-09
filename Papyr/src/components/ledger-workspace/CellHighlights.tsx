@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { LEDGER_CONSTANTS, type CellCoordinates, type LedgerConfig, getCellId } from '@/types/ledger';
+import { LEDGER_CONSTANTS, EXPANDED_CELL_CONSTANTS, type CellCoordinates, type LedgerConfig, getCellId, getExpandedCellBounds } from '@/types/ledger';
 
 interface CellHighlightsProps {
   ledgerConfig: LedgerConfig;
@@ -208,6 +208,29 @@ export function CellHighlights({
         aria-atomic="true"
         className="sr-only"
       />
+
+      {/* Expanded writing zone indicator for selected cell */}
+      {selectedCell && (() => {
+        const expandedBounds = getExpandedCellBounds(ledgerConfig, selectedCell.columnIndex, selectedCell.rowIndex);
+        if (!expandedBounds) return null;
+        
+        return (
+          <div
+            className="absolute pointer-events-none transition-opacity duration-200"
+            style={{
+              left: expandedBounds.x,
+              top: expandedBounds.y,
+              width: expandedBounds.width,
+              height: expandedBounds.height,
+              backgroundColor: EXPANDED_CELL_CONSTANTS.EXPANDED_ZONE_COLOR,
+              opacity: EXPANDED_CELL_CONSTANTS.EXPANDED_ZONE_OPACITY,
+              border: '1px dashed rgba(251, 191, 36, 0.4)',
+              borderRadius: '4px',
+            }}
+            aria-hidden="true"
+          />
+        );
+      })()}
 
       {/* Render grid of cells */}
       {Array.from({ length: rowCount }).map((_, rowIndex) => (

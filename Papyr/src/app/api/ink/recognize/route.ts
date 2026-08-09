@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Build prompt
-  let promptText = 'Transcribe the handwritten text in this image. Respond with only the transcribed text and nothing else — no explanation, no quotation marks. If nothing is legibly written, respond with an empty string.';
+  let promptText = 'Transcribe the handwritten text in this image. This is natural handwriting, possibly cursive or with connected letters, written quickly — take your time interpreting stroke shapes and letter boundaries rather than assuming clean print handwriting. Respond with only the transcribed text and nothing else — no explanation, no quotation marks. If nothing is legibly written, respond with an empty string.';
   
   if (columnLabel) {
     promptText += ` This is from a ledger column labeled '${columnLabel}' — if the writing is ambiguous, prefer an interpretation that fits that column (e.g. a date, a name, or a currency amount, whichever fits the label).`;

@@ -45,6 +45,20 @@ export interface CellCoordinates {
 }
 
 /**
+ * Cell data for a single cell in the ledger
+ */
+export interface LedgerCellData {
+  /** Cell identifier (format: "col-{columnIndex}-row-{rowIndex}") */
+  cellId: string;
+  
+  /** Display value for the cell (recognized text or typed text) */
+  value: string;
+  
+  /** Type of content in the cell */
+  content_type: 'empty' | 'text' | 'number' | 'ink';
+}
+
+/**
  * Complete page content structure for ledger pages
  * Stored in pages.content JSONB field in database
  */
@@ -54,6 +68,9 @@ export interface LedgerPageContent {
   
   /** Ledger grid configuration */
   ledger: LedgerConfig;
+  
+  /** Cell data (recognized text, typed values, etc.) - keyed by cellId */
+  cells?: Record<string, LedgerCellData>;
 }
 
 /**
@@ -228,5 +245,72 @@ export function getCellBounds(
     y,
     width: column.width,
     height: LEDGER_CONSTANTS.ROW_HEIGHT,
+  };
+}
+
+/**
+ * Constants for expanded cell bounds (active cell writing zone)
+ */
+export const EXPANDED_CELL_CONSTANTS = {
+  /** Minimum comfortable width for natural handwriting (pixels) */
+  MIN_WRITING_WIDTH: 200,
+  
+  /** Vertical expansion above cell (half row height) */
+  VERTICAL_EXPANSION_ABOVE: LEDGER_CONSTANTS.ROW_HEIGHT / 2,
+  
+  /** Vertical expansion below cell (half row height) */
+  VERTICAL_EXPANSION_BELOW: LEDGER_CONSTANTS.ROW_HEIGHT / 2,
+  
+  /** Background tint color for expanded zone */
+  EXPANDED_ZONE_COLOR: '#FFF4CC',
+  
+  /** Opacity for expanded zone background */
+  EXPANDED_ZONE_OPACITY: 0.3,
+} as const;
+
+/**
+ * Compute expanded bounds for an active cell's writing zone
+ * Provides more room for natural handwriting: extends vertically and ensures minimum width
+ * 
+ * @param ledgerConfig - The ledger configuration with columns
+ * @param columnIndex - Column index (0-based)
+ * @param rowIndex - Row index (0-based)
+ * @returns Expanded bounds object, or null if cell is invalid
+ */
+export function getExpandedCellBounds(
+  ledgerConfig: LedgerConfig,
+  columnIndex: number,
+  rowIndex: number
+): { x: number; y: number; width: number; height: number } | null {
+  const baseBounds = getCellBounds(ledgerConfig, columnIndex, rowIndex);
+  
+  if (!baseBounds) {
+    return null;
+  }
+
+  // Expand vertically (half row height above and below)
+  const expandedHeight = 
+    baseBounds.height + 
+    EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_ABOVE + 
+    EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_BELOW;
+  
+  const expandedY = baseBounds.y - EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_ABOVE;
+
+  // Ensure minimum comfortable width for writing
+  let expandedWidth = baseBounds.width;
+  let expandedX = baseBounds.x;
+  
+  if (baseBounds.width < EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH) {
+    // Expand horizontally, centered on the cell
+    const widthDiff = EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH - baseBounds.width;
+    expandedWidth = EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH;
+    expandedX = baseBounds.x - widthDiff / 2;
+  }
+
+  return {
+    x: expandedX,
+    y: expandedY,
+    width: expandedWidth,
+    height: expandedHeight,
   };
 }

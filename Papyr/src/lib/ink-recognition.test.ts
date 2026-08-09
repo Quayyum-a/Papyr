@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { captureCellImage, cellHasInk, recognizeInk } from './ink-recognition';
 import type { LedgerConfig } from '@/types/ledger';
+import { getExpandedCellBounds } from '@/types/ledger';
 import type { Stroke } from './ink-engine/types';
 
 describe('captureCellImage', () => {
@@ -35,6 +36,60 @@ describe('captureCellImage', () => {
     });
 
     expect(result).toBeNull();
+  });
+
+  it('should use expanded cell bounds for active cells', () => {
+    const cellCoords = { columnIndex: 0, rowIndex: 0 };
+    
+    // Get expected expanded bounds
+    const expandedBounds = getExpandedCellBounds(testConfig, cellCoords.columnIndex, cellCoords.rowIndex);
+    expect(expandedBounds).not.toBeNull();
+
+    // Verify the bounds calculation uses expanded bounds
+    // captureCellImage internally calls getExpandedCellBounds
+    // Full canvas drawing is verified in browser/manual testing
+    // Here we verify the calculation is correct
+    expect(expandedBounds!.width).toBe(200); // MIN_WRITING_WIDTH for narrow column
+    expect(expandedBounds!.height).toBe(88); // ROW_HEIGHT + vertical expansions (44 + 22 + 22)
+    
+    // Verify centered horizontal expansion for narrow column
+    const widthDiff = 200 - 120; // MIN_WRITING_WIDTH - actual column width
+    expect(expandedBounds!.x).toBe(0 - widthDiff / 2); // Centered: -40
+  });
+
+  it('should use same expanded bounds as InkLayer for narrow columns', () => {
+    // Narrow column (Date: 120px < 200px min)
+    const cellCoords = { columnIndex: 0, rowIndex: 0 };
+    
+    const expandedBounds = getExpandedCellBounds(testConfig, cellCoords.columnIndex, cellCoords.rowIndex);
+    expect(expandedBounds).not.toBeNull();
+    
+    // Verify expanded width for narrow column
+    expect(expandedBounds!.width).toBe(200); // MIN_WRITING_WIDTH
+    
+    // Verify vertical expansion (half row height = 22px above and below)
+    expect(expandedBounds!.height).toBe(44 + 22 + 22); // ROW_HEIGHT + expansions
+    
+    // Verify centered horizontal expansion
+    const widthDiff = 200 - 120;
+    expect(expandedBounds!.x).toBe(0 - widthDiff / 2);
+  });
+
+  it('should use same expanded bounds as InkLayer for wide columns', () => {
+    // Wide column (Description: 280px >= 200px min)
+    const cellCoords = { columnIndex: 1, rowIndex: 0 };
+    
+    const expandedBounds = getExpandedCellBounds(testConfig, cellCoords.columnIndex, cellCoords.rowIndex);
+    expect(expandedBounds).not.toBeNull();
+    
+    // Width should remain unchanged for wide columns
+    expect(expandedBounds!.width).toBe(280);
+    
+    // Verify vertical expansion only
+    expect(expandedBounds!.height).toBe(44 + 22 + 22);
+    
+    // X position should remain at column start (120px from left)
+    expect(expandedBounds!.x).toBe(120);
   });
 
   // Note: Full canvas drawing tests are skipped in jsdom environment

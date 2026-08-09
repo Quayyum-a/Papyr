@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { StrokeRenderer } from '@/lib/ink-engine/stroke-renderer';
 import { PEN_CONFIGS, type Stroke, type RawPoint, type PenSize } from '@/lib/ink-engine/types';
-import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, getCellBounds } from '@/types/ledger';
+import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, getCellBounds, parseCellId, getExpandedCellBounds } from '@/types/ledger';
 
 interface InkLayerProps {
   ctx: CanvasRenderingContext2D | null;
@@ -80,10 +80,32 @@ export function InkLayer({
       offscreenCtx.clearRect(0, 0, width, height);
 
       // Render all completed strokes to offscreen canvas
-      // Completed strokes are rendered at their stored positions without clipping
-      // (they were already clipped when drawn under their cell's selection)
+      // Each stroke is clipped to its own cell's bounds (if it has a cell_id)
       for (const stroke of strokes) {
         offscreenCtx.fillStyle = stroke.color;
+        
+        // If stroke has a cell_id, clip to that cell's bounds
+        if (stroke.cell_id) {
+          const cellCoords = parseCellId(stroke.cell_id);
+          if (cellCoords) {
+            const bounds = getCellBounds(ledgerConfig, cellCoords.columnIndex, cellCoords.rowIndex);
+            if (bounds) {
+              offscreenCtx.save();
+              offscreenCtx.beginPath();
+              offscreenCtx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+              offscreenCtx.clip();
+              
+              for (const segment of stroke.segments) {
+                renderer.drawSegment(offscreenCtx, segment);
+              }
+              
+              offscreenCtx.restore();
+              continue; // Skip the unclipped render below
+            }
+          }
+        }
+        
+        // Free strokes (no cell_id) or strokes with invalid cell_id render unclipped
         for (const segment of stroke.segments) {
           renderer.drawSegment(offscreenCtx, segment);
         }
@@ -106,13 +128,13 @@ export function InkLayer({
       }
     }
 
-    // Render current stroke (if drawing) - clip to selected cell bounds
+    // Render current stroke (if drawing) - clip to selected cell's expanded bounds
     if (currentStroke && currentStroke.length > 1 && selectedCell) {
-      const bounds = getCellBounds(ledgerConfig, selectedCell.columnIndex, selectedCell.rowIndex);
-      if (bounds) {
+      const expandedBounds = getExpandedCellBounds(ledgerConfig, selectedCell.columnIndex, selectedCell.rowIndex);
+      if (expandedBounds) {
         ctx.save();
         ctx.beginPath();
-        ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+        ctx.rect(expandedBounds.x, expandedBounds.y, expandedBounds.width, expandedBounds.height);
         ctx.clip();
 
         const tailSegments = renderer.renderStrokeTail(currentStroke);
