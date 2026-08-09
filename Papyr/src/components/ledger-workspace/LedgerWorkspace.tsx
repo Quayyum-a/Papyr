@@ -57,6 +57,10 @@ export function LedgerWorkspace({
     isDrawing,
     isSaving,
 
+    // Recognition state
+    recognizingCells,
+    inkCanvasRef,
+
     // Pointer handlers
     handlePointerDown,
     handlePointerMove,
@@ -225,6 +229,8 @@ export function LedgerWorkspace({
             currentPenSize={currentPenSize}
             currentColor={currentColor}
             selectedCell={selectedCell}
+            inkCanvasRef={inkCanvasRef}
+            recognizingCells={recognizingCells}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -242,6 +248,7 @@ export function LedgerWorkspace({
           <CellHighlights
             ledgerConfig={ledgerConfig}
             selectedCell={selectedCell}
+            recognizingCells={recognizingCells}
             onCellSelect={selectCell}
           />
         </div>

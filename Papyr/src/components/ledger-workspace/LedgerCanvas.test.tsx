@@ -67,6 +67,7 @@ describe('LedgerCanvas', () => {
         currentStroke={null}
         currentPenSize="medium"
         currentColor="#000000"
+        selectedCell={null}
       />
     );
 
@@ -82,6 +83,7 @@ describe('LedgerCanvas', () => {
         currentStroke={null}
         currentPenSize="medium"
         currentColor="#000000"
+        selectedCell={null}
       />
     );
 
@@ -99,6 +101,7 @@ describe('LedgerCanvas', () => {
         currentStroke={null}
         currentPenSize="medium"
         currentColor="#000000"
+        selectedCell={null}
       />
     );
 
@@ -114,6 +117,7 @@ describe('LedgerCanvas', () => {
         currentStroke={null}
         currentPenSize="medium"
         currentColor="#000000"
+        selectedCell={null}
       />
     );
 
@@ -131,6 +135,7 @@ describe('LedgerCanvas', () => {
         currentStroke={null}
         currentPenSize="medium"
         currentColor="#000000"
+        selectedCell={null}
         onPointerDown={handlePointerDown}
       />
     );
@@ -150,6 +155,7 @@ describe('LedgerCanvas', () => {
         currentStroke={null}
         currentPenSize="medium"
         currentColor="#000000"
+        selectedCell={null}
         className="custom-class"
       />
     );
@@ -166,6 +172,7 @@ describe('LedgerCanvas', () => {
         currentStroke={null}
         currentPenSize="medium"
         currentColor="#000000"
+        selectedCell={null}
       />
     );
 
