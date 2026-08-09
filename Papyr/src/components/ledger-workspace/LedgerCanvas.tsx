@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useLedgerCanvas } from './useLedgerCanvas';
 import { PaperLayer } from './PaperLayer';
 import { GridLayer } from './GridLayer';
@@ -14,6 +15,8 @@ interface LedgerCanvasProps {
   currentPenSize: PenSize;
   currentColor: string;
   selectedCell: CellCoordinates | null;
+  inkCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  recognizingCells?: Set<string>;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -38,6 +41,8 @@ export function LedgerCanvas({
   currentPenSize,
   currentColor,
   selectedCell,
+  inkCanvasRef: externalInkCanvasRef,
+  recognizingCells = new Set(),
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -47,7 +52,7 @@ export function LedgerCanvas({
   const {
     paperCanvasRef,
     gridCanvasRef,
-    inkCanvasRef,
+    inkCanvasRef: internalInkCanvasRef,
     paperCtx,
     gridCtx,
     inkCtx,
@@ -55,6 +60,13 @@ export function LedgerCanvas({
     isReady,
     renderKey,
   } = useLedgerCanvas(ledgerConfig);
+
+  // Sync internal ref with external ref if provided
+  useEffect(() => {
+    if (externalInkCanvasRef && internalInkCanvasRef.current) {
+      (externalInkCanvasRef as React.MutableRefObject<HTMLCanvasElement | null>).current = internalInkCanvasRef.current;
+    }
+  }, [externalInkCanvasRef, internalInkCanvasRef]);
 
   return (
     <div
@@ -100,7 +112,7 @@ export function LedgerCanvas({
 
       {/* Ink layer (z-index: 2) */}
       <canvas
-        ref={inkCanvasRef}
+        ref={internalInkCanvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ zIndex: 2 }}
         aria-hidden="true"

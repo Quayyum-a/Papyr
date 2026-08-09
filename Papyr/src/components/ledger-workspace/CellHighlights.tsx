@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { LEDGER_CONSTANTS, type CellCoordinates, type LedgerConfig } from '@/types/ledger';
+import { LEDGER_CONSTANTS, type CellCoordinates, type LedgerConfig, getCellId } from '@/types/ledger';
 
 interface CellHighlightsProps {
   ledgerConfig: LedgerConfig;
   selectedCell: CellCoordinates | null;
+  recognizingCells?: Set<string>;
   onCellSelect: (coords: CellCoordinates | null) => void;
   className?: string;
 }
@@ -18,6 +19,7 @@ interface CellHighlightsProps {
 export function CellHighlights({
   ledgerConfig,
   selectedCell,
+  recognizingCells = new Set(),
   onCellSelect,
   className = '',
 }: CellHighlightsProps) {
@@ -231,6 +233,8 @@ export function CellHighlights({
               focusedCell.rowIndex === rowIndex;
 
             const cellKey = `${columnIndex}-${rowIndex}`;
+            const cellId = getCellId({ columnIndex, rowIndex });
+            const isRecognizing = recognizingCells.has(cellId);
 
             return (
               <div
@@ -263,6 +267,35 @@ export function CellHighlights({
                     }}
                     aria-hidden="true"
                   />
+                )}
+                
+                {/* Recognition indicator */}
+                {isRecognizing && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none bg-blue-50/30"
+                    aria-label="Recognizing handwriting"
+                  >
+                    <svg
+                      className="w-5 h-5 text-blue-600 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  </div>
                 )}
               </div>
             );
