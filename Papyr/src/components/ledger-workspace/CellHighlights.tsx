@@ -189,7 +189,7 @@ export function CellHighlights({
   return (
     <div
       ref={gridRef}
-      className={`absolute inset-0 pointer-events-auto ${className}`}
+      className={`absolute inset-0 pointer-events-none ${className}`}
       style={{
         top: LEDGER_CONSTANTS.HEADER_HEIGHT,
         zIndex: 3,
@@ -241,7 +241,7 @@ export function CellHighlights({
                 key={column.id}
                 ref={(el) => { if (el) cellRefsRef.current.set(cellKey, el); }}
                 className={`relative cursor-pointer transition-all duration-100 ease-out ${
-                  isSelected ? 'bg-yellow-50' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-yellow-50 pointer-events-none' : 'hover:bg-gray-50 pointer-events-auto'
                 } ${isFocused ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
                 style={{
                   width: column.width,
