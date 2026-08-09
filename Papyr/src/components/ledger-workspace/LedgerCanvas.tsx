@@ -17,6 +17,7 @@ interface LedgerCanvasProps {
   selectedCell: CellCoordinates | null;
   inkCanvasRef?: React.RefObject<HTMLCanvasElement>;
   recognizingCells?: Set<string>;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -43,6 +44,7 @@ export function LedgerCanvas({
   selectedCell,
   inkCanvasRef: externalInkCanvasRef,
   recognizingCells = new Set(),
+  scrollContainerRef,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -76,7 +78,10 @@ export function LedgerCanvas({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerLeave}
       onPointerCancel={onPointerLeave}
-      style={{ touchAction: 'none' }}
+      style={{
+        // Allow scrolling by default, disable touch action only within selected cell (handled in pointer events)
+        touchAction: selectedCell ? 'none' : 'auto',
+      }}
     >
       {/* Loading skeleton while canvas initializes */}
       {!isReady && (

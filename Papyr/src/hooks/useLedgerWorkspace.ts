@@ -66,6 +66,8 @@ export function useLedgerWorkspace({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pointerStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   
   // Handwriting session manager (replaces old per-stroke recognition logic)
   const sessionManager = useMemo(() => {
@@ -240,7 +242,7 @@ export function useLedgerWorkspace({
     };
   }, [cellSelection.selectedCell, pageId, sessionManager]);
 
-  // Pointer event handlers
+  // Pointer event handlers with scroll offset support
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Ignore if another pointer is already active
     if (activePointerIdRef.current !== null) return;
@@ -250,6 +252,27 @@ export function useLedgerWorkspace({
 
     const target = e.currentTarget;
     const rect = target.getBoundingClientRect();
+    
+    // Get scroll container to account for scroll offsets
+    const scrollContainer = target.closest('[role="region"]')?.parentElement;
+    const scrollLeft = scrollContainer?.scrollLeft || 0;
+    const scrollTop = scrollContainer?.scrollTop || 0;
+
+    // Calculate canvas-relative coordinates accounting for scroll
+    const canvasX = e.clientX - rect.left + scrollLeft;
+    const canvasY = e.clientY - rect.top + scrollTop;
+    
+    // Store start position for gesture detection
+    pointerStartPositionRef.current = { x: e.clientX, y: e.clientY };
+
+    // Check if pointer is within selected cell's expanded bounds
+    const expandedBounds = import('@/types/ledger').then(m => 
+      m.getExpandedCellBounds(
+        ledgerConfig.ledgerConfig,
+        cellSelection.selectedCell!.columnIndex,
+        cellSelection.selectedCell!.rowIndex
+      )
+    );
 
     activePointerIdRef.current = e.pointerId;
     setIsDrawing(true);
@@ -262,14 +285,14 @@ export function useLedgerWorkspace({
     }
 
     setCurrentPoints([{
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: canvasX,
+      y: canvasY,
       t: Date.now(),
       pressure: e.pressure,
       tiltX: e.tiltX,
       tiltY: e.tiltY,
     }]);
-  }, [cellSelection.selectedCell]);
+  }, [cellSelection.selectedCell, ledgerConfig.ledgerConfig]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Ignore if not the active pointer
@@ -277,9 +300,19 @@ export function useLedgerWorkspace({
     if (!isDrawing) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
+    
+    // Get scroll container to account for scroll offsets
+    const scrollContainer = e.currentTarget.closest('[role="region"]')?.parentElement;
+    const scrollLeft = scrollContainer?.scrollLeft || 0;
+    const scrollTop = scrollContainer?.scrollTop || 0;
+    
+    // Calculate canvas-relative coordinates accounting for scroll
+    const canvasX = e.clientX - rect.left + scrollLeft;
+    const canvasY = e.clientY - rect.top + scrollTop;
+    
     setCurrentPoints(prev => [...prev, {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: canvasX,
+      y: canvasY,
       t: Date.now(),
       pressure: e.pressure,
       tiltX: e.tiltX,

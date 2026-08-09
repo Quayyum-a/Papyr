@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { LedgerCanvas } from '@/components/ledger-workspace/LedgerCanvas';
 import { ColumnHeaders } from '@/components/ledger-workspace/ColumnHeaders';
 import { CellHighlights } from '@/components/ledger-workspace/CellHighlights';
+import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
 import type { LedgerPageContent } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
@@ -27,6 +28,9 @@ export function LedgerWorkspace({
   initialContent,
   className = '',
 }: LedgerWorkspaceProps) {
+  // Ref for scrollable container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const {
     // Ink engine
     strokes,
@@ -128,98 +132,39 @@ export function LedgerWorkspace({
 
   return (
     <div className={`relative w-full h-full ${className}`} role="application" aria-label="Ledger workspace">
-      {/* Toolbar - Vertical on right side, floating */}
-      <div
-        className="absolute top-0 right-0 h-full z-10 bg-white/90 backdrop-blur-sm shadow-lg px-3 py-4 flex flex-col items-center gap-4"
-        role="toolbar"
-        aria-label="Ledger toolbar"
-        style={{ width: '80px' }}
+      {/* Responsive Toolbar */}
+      <LedgerToolbar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        currentPenSize={currentPenSize}
+        currentColor={currentColor}
+        onPenSizeChange={setPenSize}
+        onColorChange={setPenColor}
+        strokeCount={strokes.length}
+        columnCount={ledgerConfig.columns.length}
+        selectedCell={selectedCell}
+        isSaving={isSaving}
+      />
+
+      {/* Scrollable Ledger Workspace */}
+      <div 
+        ref={scrollContainerRef}
+        className="relative w-full h-full overflow-auto"
+        style={{
+          // Reserve space for desktop toolbar
+          paddingRight: 'clamp(0px, calc(100vw - 768px), 80px)',
+        }}
       >
-        <div className="flex flex-col gap-2" role="group" aria-label="History">
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full aspect-square flex items-center justify-center"
-            aria-label="Undo (Ctrl+Z)"
-            aria-disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
-          >
-            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-          </button>
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full aspect-square flex items-center justify-center"
-            aria-label="Redo (Ctrl+Shift+Z)"
-            aria-disabled={!canRedo}
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
-
-        <div className="flex flex-col items-center gap-2 w-full" role="group" aria-label="Pen settings">
-          <label htmlFor="pen-size" className="text-xs text-gray-500 font-medium">Pen</label>
-          <select
-            id="pen-size"
-            value={currentPenSize}
-            onChange={e => setPenSize(e.target.value as any)}
-            className="px-1 py-2 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-center"
-            aria-label="Pen size"
-          >
-            <option value="extra-fine">XFine</option>
-            <option value="fine">Fine</option>
-            <option value="medium">Med</option>
-            <option value="bold">Bold</option>
-            <option value="marker">Mark</option>
-          </select>
-        </div>
-
-        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
-
-        <div className="flex flex-col items-center gap-2 w-full" role="group" aria-label="Color picker">
-          <label htmlFor="pen-color" className="text-xs text-gray-500 font-medium">Color</label>
-          <input
-            id="pen-color"
-            type="color"
-            value={currentColor}
-            onChange={e => setPenColor(e.target.value)}
-            className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-            aria-label="Pen color"
-            title="Pen color"
-          />
-        </div>
-
-        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
-
-        <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-auto text-center" aria-live="polite" aria-atomic="true">
-          <span className="font-medium">{strokes.length}</span>
-          <span className="text-[10px] leading-tight">strokes</span>
-          <span className="font-medium mt-1">{ledgerConfig.columns.length}</span>
-          <span className="text-[10px] leading-tight">columns</span>
-          {selectedCell && (
-            <>
-              <span className="text-blue-600 font-medium mt-2" aria-label={`Selected cell: column ${selectedCell.columnIndex + 1}, row ${selectedCell.rowIndex + 1}`}>
-                {selectedCell.columnIndex + 1},{selectedCell.rowIndex + 1}
-              </span>
-            </>
-          )}
-          {isSaving && <span className="text-yellow-600 mt-2" aria-label="Saving changes">Saving…</span>}
-        </div>
-      </div>
-
-      {/* Ledger Workspace */}
-      <div className="relative w-full h-full">
         <div
-          className="absolute inset-0 border border-gray-300 rounded-lg overflow-hidden bg-white"
+          className="relative min-w-max border border-gray-300 rounded-lg bg-white"
           role="region"
           aria-label="Ledger grid"
+          style={{
+            // Natural ledger dimensions - allow horizontal scroll on mobile
+            minWidth: 'max-content',
+          }}
         >
           {/* Canvas layers */}
           <LedgerCanvas
@@ -231,6 +176,7 @@ export function LedgerWorkspace({
             selectedCell={selectedCell}
             inkCanvasRef={inkCanvasRef}
             recognizingCells={recognizingCells}
+            scrollContainerRef={scrollContainerRef}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

@@ -129,32 +129,36 @@ export default function BookLedgerPage() {
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
-      {/* App Header */}
+      {/* App Header - Mobile Optimized */}
       <header className="bg-white shadow-sm border-b border-gray-100 flex-shrink-0 z-10">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 sm:h-20">
-            <div className="flex items-center gap-4">
+        <div className="max-w-full mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16 lg:h-20">
+            {/* Left section */}
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               <Link
                 href="/dashboard/books"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                 aria-label="Back to books"
               >
-                <ChevronLeft className="w-6 h-6 text-gray-600" />
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
               </Link>
-              <PapyrLogo />
+              <div className="hidden sm:block flex-shrink-0">
+                <PapyrLogo />
+              </div>
               {book && (
-                <h1 className="text-lg font-semibold text-gray-900 truncate max-w-[300px]">
+                <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate min-w-0">
                   {book.title}
                 </h1>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            {/* Right section */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <Link
                 href="/profile"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 aria-label="View profile"
               >
-                <User className="w-6 h-6 text-gray-600" />
+                <User className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
               </Link>
             </div>
           </div>
