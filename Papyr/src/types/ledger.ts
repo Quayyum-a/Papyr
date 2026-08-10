@@ -271,7 +271,7 @@ export const EXPANDED_CELL_CONSTANTS = {
 /**
  * Compute expanded bounds for an active cell's writing zone
  * Provides more room for natural handwriting: extends vertically and ensures minimum width
- * 
+ *
  * @param ledgerConfig - The ledger configuration with columns
  * @param columnIndex - Column index (0-based)
  * @param rowIndex - Row index (0-based)
@@ -283,23 +283,23 @@ export function getExpandedCellBounds(
   rowIndex: number
 ): { x: number; y: number; width: number; height: number } | null {
   const baseBounds = getCellBounds(ledgerConfig, columnIndex, rowIndex);
-  
+
   if (!baseBounds) {
     return null;
   }
 
   // Expand vertically (half row height above and below)
-  const expandedHeight = 
-    baseBounds.height + 
-    EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_ABOVE + 
+  const expandedHeight =
+    baseBounds.height +
+    EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_ABOVE +
     EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_BELOW;
-  
+
   const expandedY = baseBounds.y - EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_ABOVE;
 
   // Ensure minimum comfortable width for writing
   let expandedWidth = baseBounds.width;
   let expandedX = baseBounds.x;
-  
+
   if (baseBounds.width < EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH) {
     // Expand horizontally, centered on the cell
     const widthDiff = EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH - baseBounds.width;
@@ -313,4 +313,23 @@ export function getExpandedCellBounds(
     width: expandedWidth,
     height: expandedHeight,
   };
+}
+
+/**
+ * Compute the total content dimensions of the ledger
+ * This gives the exact size the ledger content should be, derived entirely from config
+ *
+ * @param ledgerConfig - The ledger configuration with columns and row count
+ * @returns Object with total width and height in pixels
+ */
+export function getLedgerContentDimensions(
+  ledgerConfig: LedgerConfig
+): { width: number; height: number } {
+  // Total width = sum of all column widths
+  const totalWidth = ledgerConfig.columns.reduce((sum, col) => sum + col.width, 0);
+
+  // Total height = header height + (row count * row height)
+  const totalHeight = LEDGER_CONSTANTS.HEADER_HEIGHT + ledgerConfig.rowCount * LEDGER_CONSTANTS.ROW_HEIGHT;
+
+  return { width: totalWidth, height: totalHeight };
 }

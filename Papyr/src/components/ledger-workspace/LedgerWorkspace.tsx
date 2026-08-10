@@ -7,6 +7,7 @@ import { CellHighlights } from '@/components/ledger-workspace/CellHighlights';
 import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
 import type { LedgerPageContent } from '@/types/ledger';
+import { getLedgerContentDimensions } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
 
 interface LedgerWorkspaceProps {
@@ -124,6 +125,9 @@ export function LedgerWorkspace({
     // Arrow keys: Cell navigation (handled by CellHighlights)
   }, [canUndo, canRedo, undo, redo, selectedCell, clearSelection]);
 
+  // Compute ledger content dimensions from config
+  const contentDimensions = getLedgerContentDimensions(ledgerConfig);
+
   // Register keyboard shortcuts
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -149,7 +153,7 @@ export function LedgerWorkspace({
       />
 
       {/* Scrollable Ledger Workspace */}
-      <div 
+      <div
         ref={scrollContainerRef}
         className="relative w-full h-full overflow-auto"
         style={{
@@ -157,13 +161,19 @@ export function LedgerWorkspace({
           paddingRight: 'clamp(0px, calc(100vw - 768px), 80px)',
         }}
       >
+        {/*
+          Content wrapper with explicit dimensions derived from ledgerConfig.
+          This ensures percentage-based heights (in LedgerCanvas) resolve correctly.
+          Without explicit height, the wrapper's height is auto (content-based),
+          making 100% heights in descendants resolve to 0.
+        */}
         <div
-          className="relative min-w-max border border-gray-300 rounded-lg bg-white"
+          className="relative border border-gray-300 rounded-lg bg-white"
           role="region"
           aria-label="Ledger grid"
           style={{
-            // Natural ledger dimensions - allow horizontal scroll on mobile
-            minWidth: 'max-content',
+            width: `${contentDimensions.width}px`,
+            height: `${contentDimensions.height}px`,
           }}
         >
           {/* Canvas layers */}

@@ -109,7 +109,7 @@ describe('LedgerCanvas', () => {
     expect(inkCanvas).toHaveClass('pointer-events-none');
   });
 
-  it('should set touchAction to none to prevent default behaviors', () => {
+  it('should set touchAction to auto when no cell is selected', () => {
     const { container } = render(
       <LedgerCanvas
         ledgerConfig={mockLedgerConfig}
@@ -118,6 +118,22 @@ describe('LedgerCanvas', () => {
         currentPenSize="medium"
         currentColor="#000000"
         selectedCell={null}
+      />
+    );
+
+    const wrapper = container.firstChild as HTMLElement;
+    expect(wrapper).toHaveStyle({ touchAction: 'auto' });
+  });
+
+  it('should set touchAction to none when a cell is selected', () => {
+    const { container } = render(
+      <LedgerCanvas
+        ledgerConfig={mockLedgerConfig}
+        strokes={mockStrokes}
+        currentStroke={null}
+        currentPenSize="medium"
+        currentColor="#000000"
+        selectedCell={{ columnIndex: 0, rowIndex: 0 }}
       />
     );
 

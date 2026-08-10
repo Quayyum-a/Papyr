@@ -63,17 +63,19 @@ export function cellHasInk(strokes: Stroke[], cellId: string): boolean {
 
 /**
  * Call the recognition API to transcribe handwritten text in an image
+ * Tries Google Cloud Vision first (more accurate, cheaper), falls back to OpenRouter
  * 
  * @param imageDataUrl - Base64 PNG data URL of the cell image
  * @param columnLabel - Optional column label for context-aware recognition
- * @returns Recognized text, or null if recognition fails
+ * @returns Recognized text, or null if all recognition attempts fail
  */
 export async function recognizeInk(
   imageDataUrl: string,
   columnLabel?: string
 ): Promise<string | null> {
+  // Try Google Cloud Vision first (primary method)
   try {
-    const response = await fetch('/api/ink/recognize', {
+    const visionResponse = await fetch('/api/ink/recognize-vision', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -84,21 +86,59 @@ export async function recognizeInk(
       }),
     });
 
-    if (!response.ok) {
-      console.error('Recognition API returned non-OK status:', response.status);
-      return null;
+    if (visionResponse.ok) {
+      const visionData = await visionResponse.json();
+      
+      if (!visionData.error && visionData.text !== undefined) {
+        console.log('[Recognition] Google Cloud Vision succeeded:', {
+          text: visionData.text,
+          confidence: visionData.confidence,
+        });
+        return visionData.text;
+      }
+    } else if (visionResponse.status === 503) {
+      // Service not configured, fall through to OpenRouter
+      console.log('[Recognition] Google Cloud Vision not configured, trying OpenRouter');
+    } else {
+      console.warn('[Recognition] Google Cloud Vision failed:', visionResponse.status);
     }
-
-    const data = await response.json();
-    
-    if (data.error) {
-      console.error('Recognition API returned error:', data.error);
-      return null;
-    }
-
-    return data.text ?? null;
   } catch (error) {
-    console.error('Failed to call recognition API:', error);
+    console.warn('[Recognition] Google Cloud Vision error:', error);
+  }
+
+  // Fallback to OpenRouter (secondary method)
+  try {
+    const openRouterResponse = await fetch('/api/ink/recognize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image: imageDataUrl,
+        columnLabel,
+      }),
+    });
+
+    if (!openRouterResponse.ok) {
+      console.error('[Recognition] OpenRouter returned non-OK status:', openRouterResponse.status);
+      return null;
+    }
+
+    const openRouterData = await openRouterResponse.json();
+    
+    if (openRouterData.error) {
+      console.error('[Recognition] OpenRouter returned error:', openRouterData.error);
+      return null;
+    }
+
+    console.log('[Recognition] OpenRouter succeeded:', {
+      text: openRouterData.text,
+      model: openRouterData.model,
+    });
+
+    return openRouterData.text ?? null;
+  } catch (error) {
+    console.error('[Recognition] OpenRouter error:', error);
     return null;
   }
 }
