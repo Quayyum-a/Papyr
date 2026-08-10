@@ -155,11 +155,7 @@ export function LedgerWorkspace({
       {/* Scrollable Ledger Workspace */}
       <div
         ref={scrollContainerRef}
-        className="relative w-full h-full overflow-auto"
-        style={{
-          // Reserve space for desktop toolbar
-          paddingRight: 'clamp(0px, calc(100vw - 768px), 80px)',
-        }}
+        className="relative w-full h-full overflow-auto md:pr-20"
       >
         {/*
           Content wrapper with explicit dimensions derived from ledgerConfig.

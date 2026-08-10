@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import vision from '@google-cloud/vision';
+import { ImageAnnotatorClient } from '@google-cloud/vision';
 
 interface RecognizeRequestBody {
   image: string; // base64 PNG data URL
@@ -86,25 +86,24 @@ export async function POST(request: NextRequest) {
 
   try {
     // Initialize Google Cloud Vision client
-    // @google-cloud/vision default export is the v1 namespace
-    let visionClient: InstanceType<typeof vision.ImageAnnotatorClient>;
+    let visionClient: ImageAnnotatorClient;
 
     if (useADC) {
       // Use Application Default Credentials (development)
       // Credentials come from: gcloud auth application-default login
       console.log('[Vision] Using Application Default Credentials');
-      visionClient = new vision.ImageAnnotatorClient();
+      visionClient = new ImageAnnotatorClient();
     } else if (credentialsJson) {
       // Production: Use JSON string from environment variable
       console.log('[Vision] Using credentials from environment JSON');
       const credentials = JSON.parse(credentialsJson);
-      visionClient = new vision.ImageAnnotatorClient({
+      visionClient = new ImageAnnotatorClient({
         credentials,
       });
     } else if (credentialsPath) {
       // Development: Use file path
       console.log('[Vision] Using credentials from file path');
-      visionClient = new vision.ImageAnnotatorClient({
+      visionClient = new ImageAnnotatorClient({
         keyFilename: credentialsPath,
       });
     } else {
