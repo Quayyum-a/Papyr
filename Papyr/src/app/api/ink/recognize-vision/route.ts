@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
 
   try {
     // Initialize Google Cloud Vision client
-    let visionClient: vision.ImageAnnotatorClient;
+    // @google-cloud/vision default export is the v1 namespace
+    let visionClient: InstanceType<typeof vision.ImageAnnotatorClient>;
 
     if (useADC) {
       // Use Application Default Credentials (development)
