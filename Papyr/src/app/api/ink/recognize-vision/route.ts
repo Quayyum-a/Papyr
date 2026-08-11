@@ -205,12 +205,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // For any other error, return 503 to trigger fallback to OpenRouter
     return NextResponse.json(
-      { 
+      {
         error: 'recognition_failed',
-        details: error.message 
+        details: error.message
       },
-      { status: 500 }
+      { status: 503 }
     );
   }
 }
