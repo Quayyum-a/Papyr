@@ -166,14 +166,18 @@ export async function POST(request: NextRequest) {
 
       const recognizedText = data.choices?.[0]?.message?.content?.trim();
 
-      if (recognizedText !== undefined && recognizedText !== null) {
+      // Only treat a non-empty string as a successful recognition.
+      // An empty string is treated as a failure and we try the next model.
+      if (recognizedText !== undefined && recognizedText !== null && recognizedText !== '') {
         // Success! Return the recognized text
+        console.log(`[Recognition] Model ${model} succeeded with text length: ${recognizedText.length}`);
         return NextResponse.json({
           text: recognizedText,
           model, // Include which model succeeded (useful for debugging)
         });
       }
 
+      // If we get here, the model returned an empty string (or undefined/null, but we already checked for that)
       console.error(`Model ${model} returned empty response`);
     } catch (error) {
       console.error(`Model ${model} threw error:`, error);

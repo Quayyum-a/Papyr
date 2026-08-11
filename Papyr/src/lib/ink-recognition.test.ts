@@ -164,14 +164,14 @@ describe('recognizeInk', () => {
   it('should call API with correct parameters', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ text: 'John Doe', confidence: 0.95 }),
+      json: async () => ({ text: 'John Doe', model: 'test-model' }),
     });
 
     const imageData = 'data:image/png;base64,test';
     const result = await recognizeInk(imageData, 'Name');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/ink/recognize-vision',
+      '/api/ink/recognize',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
