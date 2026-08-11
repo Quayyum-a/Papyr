@@ -158,17 +158,18 @@ export function LedgerWorkspace({
         className="relative w-full min-h-full overflow-auto md:pr-20"
       >
         {/*
-          Content wrapper with explicit dimensions derived from ledgerConfig.
-          This ensures percentage-based heights (in LedgerCanvas) resolve correctly.
-          Without explicit height, the wrapper's height is auto (content-based),
-          making 100% heights in descendants resolve to 0.
+          Content wrapper with min-width 100% and width max-content to ensure
+          it fills the viewport horizontally while allowing horizontal scroll
+          when ledger content is wider than viewport. Height is fixed to ledger
+          content height to prevent vertical stretching.
         */}
         <div
           className="relative border border-gray-300 rounded-lg bg-white"
           role="region"
           aria-label="Ledger grid"
           style={{
-            width: `${contentDimensions.width}px`,
+            minWidth: '100%',
+            width: 'max-content',
             height: `${contentDimensions.height}px`,
           }}
         >
