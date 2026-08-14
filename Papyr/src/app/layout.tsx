@@ -1,10 +1,11 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Caveat } from 'next/font/google';
 import { AuthProvider } from '@/context/AuthContext';
 import SupportFooter from '@/components/SupportFooter';
 
 const inter = Inter({ subsets: ['latin'] });
+const caveat = Caveat({ subsets: ['latin'], weight: ['500', '600', '700'] });
 
 export const metadata: Metadata = {
   title: 'Papyr - Handwritten Digital Ledger',
@@ -24,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.className}>
+    <html lang="en" className={`${inter.className} ${caveat.className}`}>
       <body className="m-0 p-0">
         <AuthProvider>
           <div className="flex min-h-screen flex-col">

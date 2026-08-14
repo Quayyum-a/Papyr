@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap');
+
 html, body {
   margin: 0;
   padding: 0;
@@ -16,6 +18,14 @@ html, body {
 canvas {
   display: block;
   touch-action: none;
+}
+
+.ledger-caption {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #a19882;
 }
 
 @layer base {
