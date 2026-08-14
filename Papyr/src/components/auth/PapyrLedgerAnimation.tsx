@@ -90,17 +90,17 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
     // Initialize rows based on mode
     const buildRows = () => {
       const base = mode === 'signup' ? [] : [
-        { item: "Phone repair", qty: "1", amount: "��25,000" },
-        { item: "Screen replacement", qty: "1", amount: "��18,000" },
-        { item: "Accessories", qty: "2", amount: "��8,500" },
+        { item: "Phone repair", qty: "1", amount: "₦25,000" },
+        { item: "Screen replacement", qty: "1", amount: "₦18,000" },
+        { item: "Accessories", qty: "2", amount: "₦8,500" },
       ];
       const pending = mode === 'signup' ? [
-        { item: "Phone repair", qty: "1", amount: "��25,000" },
-        { item: "Accessories", qty: "2", amount: "��8,500" },
+        { item: "Phone repair", qty: "1", amount: "₦25,000" },
+        { item: "Accessories", qty: "2", amount: "₦8,500" },
       ] : [
-        { item: "Screen protector", qty: "1", amount: "��2,000" },
-        { item: "Power bank", qty: "1", amount: "��15,000" },
-        { item: "Car charger", qty: "1", amount: "��6,500" },
+        { item: "Screen protector", qty: "1", amount: "₦2,000" },
+        { item: "Power bank", qty: "1", amount: "₦15,000" },
+        { item: "Car charger", qty: "1", amount: "₦6,500" },
       ];
 
       rows = [];
@@ -299,20 +299,20 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       ctx.lineWidth = 1.4;
       ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,0.92)";
-      ctx.font = "700 15px Inter, sans-serif";
+      ctx.font = "700 30px Inter, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("P", PX + 41, PY + 41);
       ctx.restore();
 
       // Title
       const title = mode === 'signup' ? 'New Book' : 'Sales Ledger';
-      ctx.font = "600 25px Caveat, cursive";
+      ctx.font = "600 50px Caveat, cursive";
       ctx.textAlign = "left";
       ctx.fillStyle = INK + "0.9)";
       ctx.fillText(title, PX + 70, PY + 45);
 
       // Date
-      ctx.font = "500 16px Caveat, cursive";
+      ctx.font = "500 32px Caveat, cursive";
       ctx.textAlign = "right";
       ctx.fillStyle = "rgba(120,108,84,0.72)";
       ctx.fillText("14 Aug '26", PX + PAGE.w - 26, PY + 45);
@@ -330,7 +330,7 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       const bizX = PX + 28;
       const bizShown = bizWritten || (active && target && target.kind === 'biz' && tc >= 2.2);
       if (bizShown) {
-        ctx.font = "600 19px Caveat, cursive";
+        ctx.font = "600 96px Caveat, cursive";
         const settleBiz = active && target && target.kind === 'biz' && tgtDone && tc >= tgtDoneAt ? settle : 1;
         const wBiz = measure(ctx, bizName);
         ctx.globalAlpha = 0.88 * (0.85 + 0.15 * settleBiz);
@@ -363,7 +363,7 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       }
 
       // Column headers
-      ctx.font = "600 9.5px Inter, sans-serif";
+      ctx.font = "600 36px Inter, sans-serif";
       ctx.fillStyle = "rgba(120,108,84,0.6)";
       ctx.textAlign = "left";
       ctx.letterSpacing = "1.6px";
@@ -463,10 +463,11 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
           const wName = measure(ctx, bizName);
           penX = tc < 2.2 ? bizX : (eName < 1 ? bizX + eName * wName : bizX + wName);
         } else {
-          const row = rows[target!.row!];
-          const wItem = measure(ctx, row.entry!.item);
-          const wQty = measure(ctx, row.entry!.qty);
-          const wAmt = measure(ctx, row.entry!.amount);
+          const rowIdx = target.row !== undefined ? target.row : -1;
+          const row = rows[rowIdx];
+          const wItem = measure(ctx, row.entry.item);
+          const wQty = measure(ctx, row.entry.qty);
+          const wAmt = measure(ctx, row.entry.amount);
           if (tc < 2.2) penX = itemX + row.xj;
           else if (eI < 1) penX = itemX + row.xj + eI * wItem;
           else if (eQ < 1) penX = lerp(itemX + row.xj + wItem, qtyX + row.qj, clamp((tc - 3.7) / 0.1, 0, 1)) + eQ * wQty;
