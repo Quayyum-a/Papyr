@@ -299,20 +299,20 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       ctx.lineWidth = 1.4;
       ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,0.92)";
-      ctx.font = "700 30px Inter, sans-serif";
+      ctx.font = "700 15px Inter, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("P", PX + 41, PY + 41);
       ctx.restore();
 
       // Title
       const title = mode === 'signup' ? 'New Book' : 'Sales Ledger';
-      ctx.font = "600 50px Caveat, cursive";
+      ctx.font = "600 35px Caveat, cursive";
       ctx.textAlign = "left";
       ctx.fillStyle = INK + "0.9)";
       ctx.fillText(title, PX + 70, PY + 45);
 
       // Date
-      ctx.font = "500 32px Caveat, cursive";
+      ctx.font = "500 28px Caveat, cursive";
       ctx.textAlign = "right";
       ctx.fillStyle = "rgba(120,108,84,0.72)";
       ctx.fillText("14 Aug '26", PX + PAGE.w - 26, PY + 45);
@@ -330,7 +330,7 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       const bizX = PX + 28;
       const bizShown = bizWritten || (active && target && target.kind === 'biz' && tc >= 2.2);
       if (bizShown) {
-        ctx.font = "600 96px Caveat, cursive";
+        ctx.font = "600 45px Caveat, cursive";
         const settleBiz = active && target && target.kind === 'biz' && tgtDone && tc >= tgtDoneAt ? settle : 1;
         const wBiz = measure(ctx, bizName);
         ctx.globalAlpha = 0.88 * (0.85 + 0.15 * settleBiz);
@@ -363,7 +363,7 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       }
 
       // Column headers
-      ctx.font = "600 36px Inter, sans-serif";
+      ctx.font = "600 18px Inter, sans-serif";
       ctx.fillStyle = "rgba(120,108,84,0.6)";
       ctx.textAlign = "left";
       ctx.letterSpacing = "1.6px";
@@ -513,7 +513,7 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       ctx.moveTo(PX + 26, totalY + 10);
       ctx.lineTo(PX + PAGE.w - 26, totalY + 10);
       ctx.stroke();
-      ctx.font = "600 60px Caveat, cursive";
+      ctx.font = "600 22px Caveat, cursive";
       ctx.fillStyle = INK + "0.88)";
       ctx.textAlign = "left";
       ctx.fillText("Total", PX + 30, totalY + 30);
