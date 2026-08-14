@@ -454,7 +454,7 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       if (active && target && !tgtDone && tc >= 1.8) {
         const rowBase = target.kind === 'biz'
           ? bizBase
-          : contentTop + (target.row ?? 0) * rowH + 27 + rows[target.row ?? 0].seed * 1.1;
+          : contentTop + (target.row ?? 0) * rowH + 27 + (rows[target.row ?? 0].seed * 1.1);
         const isBiz = target.kind === 'biz';
         const eName = st.prog('name');
         const eI = st.prog('item'), eQ = st.prog('qty'), eA = st.prog('amt');
@@ -465,14 +465,19 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
         } else {
           const rowIdx = target.row !== undefined ? target.row : -1;
           const row = rows[rowIdx];
-          const wItem = measure(ctx, row.entry.item);
-          const wQty = measure(ctx, row.entry.qty);
-          const wAmt = measure(ctx, row.entry.amount);
-          if (tc < 2.2) penX = itemX + row.xj;
-          else if (eI < 1) penX = itemX + row.xj + eI * wItem;
-          else if (eQ < 1) penX = lerp(itemX + row.xj + wItem, qtyX + row.qj, clamp((tc - 3.7) / 0.1, 0, 1)) + eQ * wQty;
-          else if (eA < 1) penX = lerp(qtyX + row.qj + wQty, amtX + row.aj - wAmt, clamp((tc - 4.5) / 0.1, 0, 1)) + eA * wAmt;
-          else penX = amtX + row.aj;
+          if (!row || !row.entry) {
+            // Skip pen animation if row has no entry
+            penX = itemX; // Default position
+          } else {
+            const wItem = measure(ctx, row.entry.item);
+            const wQty = measure(ctx, row.entry.qty);
+            const wAmt = measure(ctx, row.entry.amount);
+            if (tc < 2.2) penX = itemX + row.xj;
+            else if (eI < 1) penX = itemX + row.xj + eI * wItem;
+            else if (eQ < 1) penX = lerp(itemX + row.xj + wItem, qtyX + row.qj, clamp((tc - 3.7) / 0.1, 0, 1)) + eQ * wQty;
+            else if (eA < 1) penX = lerp(qtyX + row.qj + wQty, amtX + row.aj - wAmt, clamp((tc - 4.5) / 0.1, 0, 1)) + eA * wAmt;
+            else penX = amtX + row.aj;
+          }
         }
         const app = smooth(1.8, 2.3, tc);
         const lift = smooth(tgtDoneAt + 0.12, tgtDoneAt + 0.65, tc);
@@ -508,12 +513,12 @@ export function PapyrLedgerAnimation({ mode = 'signin', className = '' }: PapyrL
       ctx.moveTo(PX + 26, totalY + 10);
       ctx.lineTo(PX + PAGE.w - 26, totalY + 10);
       ctx.stroke();
-      ctx.font = "600 20px Caveat, cursive";
+      ctx.font = "600 60px Caveat, cursive";
       ctx.fillStyle = INK + "0.88)";
       ctx.textAlign = "left";
       ctx.fillText("Total", PX + 30, totalY + 30);
       ctx.textAlign = "right";
-      ctx.fillText("��" + totalAmt.toLocaleString("en-NG"), amtX, totalY + 30);
+      ctx.fillText("₦" + totalAmt.toLocaleString("en-NG"), amtX, totalY + 30);
 
       // Saved label
       const label = active && !tgtDone ? "Saving…" : "Saved";
