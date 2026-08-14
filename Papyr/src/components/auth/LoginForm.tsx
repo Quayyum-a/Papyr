@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { PapyrLogo } from '@/components/PapyrLogo';
+import { AuthIllustrationPanel } from './AuthIllustrationPanel';
 
 export function LoginForm() {
   const { signIn, loading, error } = useAuth();
@@ -25,9 +26,10 @@ export function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12">
-      {/* Form */}
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Left side - Form */}
+      <div className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-6">
         <div>
           <PapyrLogo href="/" />
         </div>
@@ -128,6 +130,12 @@ export function LoginForm() {
             Create an account
           </Link>
         </div>
+      </div>
+    </div>
+
+      {/* Right side - Image */}
+      <div className="hidden lg:flex flex-1 bg-amber-50 items-center justify-center p-8">
+        <AuthIllustrationPanel />
       </div>
     </div>
   );
