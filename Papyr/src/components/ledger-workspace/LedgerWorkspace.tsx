@@ -4,6 +4,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { LedgerCanvas } from '@/components/ledger-workspace/LedgerCanvas';
 import { ColumnHeaders } from '@/components/ledger-workspace/ColumnHeaders';
 import { CellHighlights } from '@/components/ledger-workspace/CellHighlights';
+import { CellContent } from '@/components/ledger-workspace/CellContent';
 import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
 import type { LedgerPageContent } from '@/types/ledger';
@@ -65,6 +66,9 @@ export function LedgerWorkspace({
     // Recognition state
     recognizingCells,
     inkCanvasRef,
+
+    // Cell data
+    cells,
 
     // Pointer handlers
     handlePointerDown,
@@ -188,6 +192,15 @@ export function LedgerWorkspace({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerLeave}
+            cells={cells}
+          />
+
+          {/* Cell content overlay - recognized text and failed recognition indicators */}
+          <CellContent
+            ledgerConfig={ledgerConfig}
+            cells={cells}
+            selectedCell={selectedCell}
+            recognizingCells={recognizingCells}
           />
 
           {/* Overlay layers */}

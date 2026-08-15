@@ -23,6 +23,8 @@ interface LedgerCanvasProps {
   onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerLeave?: (e: React.PointerEvent<HTMLDivElement>) => void;
   className?: string;
+  // Cell data for rendering recognized content and skipping recognized strokes
+  cells?: Record<string, import('@/types/ledger').LedgerCellData>;
 }
 
 /**
@@ -50,6 +52,7 @@ export function LedgerCanvas({
   onPointerUp,
   onPointerLeave,
   className = '',
+  cells = {},
 }: LedgerCanvasProps) {
   const {
     paperCanvasRef,
@@ -150,6 +153,7 @@ export function LedgerCanvas({
             currentColor={currentColor}
             selectedCell={selectedCell}
             ledgerConfig={ledgerConfig}
+            cells={cells}
           />
         </>
       )}

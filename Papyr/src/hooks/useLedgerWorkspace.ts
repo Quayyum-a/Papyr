@@ -152,11 +152,12 @@ export function useLedgerWorkspace({
           rowIndex: parseInt(match[2], 10),
         };
         
-        // Capture cell image for recognition
+        // Capture cell image for recognition using actual stroke bounds
         const imageData = captureCellImage(
           inkCanvasRef.current,
           ledgerConfig.ledgerConfig,
-          cellCoords
+          cellCoords,
+          segment.strokes
         );
         
         if (!imageData) {
@@ -195,7 +196,15 @@ export function useLedgerWorkspace({
         } else {
           console.warn('[INK] RECOGNITION_FAILED or empty', { segmentId: segment.id, result: recognizedText });
           sessionManager.markSegmentRecognized(segment.id);
-          // Don't modify cell data on failure or empty result
+          // Set content_type to 'ink' with empty value to show indicator
+          setCells(prevCells => ({
+            ...prevCells,
+            [cellId]: {
+              cellId,
+              value: '',
+              content_type: 'ink',
+            },
+          }));
         }
       } catch (error) {
         console.error('[INK] Recognition error:', error);
@@ -252,7 +261,7 @@ export function useLedgerWorkspace({
 
     const target = e.currentTarget;
     const rect = target.getBoundingClientRect();
-    
+
     // Get scroll container to account for scroll offsets
     const scrollContainer = target.closest('[role="region"]')?.parentElement;
     const scrollLeft = scrollContainer?.scrollLeft || 0;
@@ -261,23 +270,14 @@ export function useLedgerWorkspace({
     // Calculate canvas-relative coordinates accounting for scroll
     const canvasX = e.clientX - rect.left + scrollLeft;
     const canvasY = e.clientY - rect.top + scrollTop;
-    
+
     // Store start position for gesture detection
     pointerStartPositionRef.current = { x: e.clientX, y: e.clientY };
-
-    // Check if pointer is within selected cell's expanded bounds
-    const expandedBounds = import('@/types/ledger').then(m => 
-      m.getExpandedCellBounds(
-        ledgerConfig.ledgerConfig,
-        cellSelection.selectedCell!.columnIndex,
-        cellSelection.selectedCell!.rowIndex
-      )
-    );
 
     activePointerIdRef.current = e.pointerId;
     setIsDrawing(true);
 
-    // Try to capture pointer
+    // Try to capture pointer - captures on the container which spans the full visible canvas
     try {
       target.setPointerCapture(e.pointerId);
     } catch {
@@ -292,7 +292,7 @@ export function useLedgerWorkspace({
       tiltX: e.tiltX,
       tiltY: e.tiltY,
     }]);
-  }, [cellSelection.selectedCell, ledgerConfig.ledgerConfig]);
+  }, [cellSelection.selectedCell]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Ignore if not the active pointer

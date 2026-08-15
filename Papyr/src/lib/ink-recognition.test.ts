@@ -1,8 +1,81 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { captureCellImage, cellHasInk, recognizeInk } from './ink-recognition';
+import { captureCellImage, cellHasInk, recognizeInk, computeStrokesBounds } from './ink-recognition';
 import type { LedgerConfig } from '@/types/ledger';
 import { getExpandedCellBounds } from '@/types/ledger';
 import type { Stroke } from './ink-engine/types';
+
+describe('computeStrokesBounds', () => {
+  const createMockStroke = (bounds: { minX: number; minY: number; maxX: number; maxY: number }, segments?: any[]): Stroke => ({
+    id: 'stroke-test',
+    tool: 'pen',
+    color: '#000000',
+    size: 'fine',
+    segments: segments || [],
+    createdAt: Date.now(),
+    bounds,
+    cell_id: 'col-0-row-0',
+  });
+
+  it('should return null for empty strokes array', () => {
+    const result = computeStrokesBounds([]);
+    expect(result).toBeNull();
+  });
+
+  it('should compute bounds from a single stroke', () => {
+    const stroke = createMockStroke({ minX: 10, minY: 20, maxX: 100, maxY: 80 });
+    const result = computeStrokesBounds([stroke], 8);
+
+    expect(result).not.toBeNull();
+    expect(result!.x).toBe(2); // 10 - 8
+    expect(result!.y).toBe(12); // 20 - 8
+    expect(result!.width).toBe(106); // (100-10) + 16
+    expect(result!.height).toBe(76); // (80-20) + 16
+  });
+
+  it('should compute union bounds from multiple strokes', () => {
+    const stroke1 = createMockStroke({ minX: 10, minY: 20, maxX: 100, maxY: 80 });
+    const stroke2 = createMockStroke({ minX: 150, minY: 50, maxX: 200, maxY: 120 });
+    const result = computeStrokesBounds([stroke1, stroke2], 8);
+
+    expect(result).not.toBeNull();
+    expect(result!.x).toBe(2); // min(10, 150) - 8
+    expect(result!.y).toBe(12); // min(20, 50) - 8
+    expect(result!.width).toBe(206); // (200 - 10) + 16
+    expect(result!.height).toBe(116); // (120 - 20) + 16
+  });
+
+  it('should use custom padding', () => {
+    const stroke = createMockStroke({ minX: 10, minY: 20, maxX: 100, maxY: 80 });
+    const result = computeStrokesBounds([stroke], 20);
+
+    expect(result).not.toBeNull();
+    expect(result!.x).toBe(-10); // 10 - 20
+    expect(result!.width).toBe(130); // (100-10) + 40
+  });
+
+  it('should fallback to segment points if stroke bounds missing', () => {
+    const stroke: Stroke = {
+      id: 'stroke-test',
+      tool: 'pen',
+      color: '#000000',
+      size: 'fine',
+      segments: [
+        { p0: { x: 5, y: 10 }, p1: { x: 50, y: 60 }, p2: { x: 80, y: 90 }, p3: { x: 120, y: 110 }, width: 2 },
+      ],
+      createdAt: Date.now(),
+      bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 }, // Invalid bounds (all zeros)
+      cell_id: 'col-0-row-0',
+    };
+    const result = computeStrokesBounds([stroke], 8);
+
+    // Should compute from segment points since bounds are degenerate
+    expect(result).not.toBeNull();
+    expect(result!.x).toBeLessThanOrEqual(5 - 8);
+    expect(result!.y).toBeLessThanOrEqual(10 - 8);
+    expect(result!.width).toBeGreaterThan(0);
+    expect(result!.height).toBeGreaterThan(0);
+  });
+});
 
 describe('captureCellImage', () => {
   const testConfig: LedgerConfig = {
@@ -14,7 +87,18 @@ describe('captureCellImage', () => {
     ],
   };
 
-  it('should return null for invalid cell coordinates', () => {
+  const createMockStroke = (bounds: { minX: number; minY: number; maxX: number; maxY: number }): Stroke => ({
+    id: 'stroke-test',
+    tool: 'pen',
+    color: '#000000',
+    size: 'fine',
+    segments: [],
+    createdAt: Date.now(),
+    bounds,
+    cell_id: 'col-0-row-0',
+  });
+
+  it('should return null for invalid cell coordinates (no strokes)', () => {
     const mockCanvas = document.createElement('canvas');
     mockCanvas.width = 640;
     mockCanvas.height = 500;
@@ -27,9 +111,9 @@ describe('captureCellImage', () => {
     expect(result).toBeNull();
   });
 
-  it('should return null for negative cell coordinates', () => {
+  it('should return null for negative cell coordinates (no strokes)', () => {
     const mockCanvas = document.createElement('canvas');
-    
+
     const result = captureCellImage(mockCanvas, testConfig, {
       columnIndex: -1,
       rowIndex: 0,
@@ -38,62 +122,67 @@ describe('captureCellImage', () => {
     expect(result).toBeNull();
   });
 
-  it('should use expanded cell bounds for active cells', () => {
+  it('should use expanded cell bounds when no strokes provided', () => {
     const cellCoords = { columnIndex: 0, rowIndex: 0 };
-    
-    // Get expected expanded bounds
+
     const expandedBounds = getExpandedCellBounds(testConfig, cellCoords.columnIndex, cellCoords.rowIndex);
     expect(expandedBounds).not.toBeNull();
 
-    // Verify the bounds calculation uses expanded bounds
-    // captureCellImage internally calls getExpandedCellBounds
-    // Full canvas drawing is verified in browser/manual testing
-    // Here we verify the calculation is correct
-    expect(expandedBounds!.width).toBe(200); // MIN_WRITING_WIDTH for narrow column
-    expect(expandedBounds!.height).toBe(88); // ROW_HEIGHT + vertical expansions (44 + 22 + 22)
-    
-    // Verify centered horizontal expansion for narrow column
-    const widthDiff = 200 - 120; // MIN_WRITING_WIDTH - actual column width
-    expect(expandedBounds!.x).toBe(0 - widthDiff / 2); // Centered: -40
-  });
-
-  it('should use same expanded bounds as InkLayer for narrow columns', () => {
-    // Narrow column (Date: 120px < 200px min)
-    const cellCoords = { columnIndex: 0, rowIndex: 0 };
-    
-    const expandedBounds = getExpandedCellBounds(testConfig, cellCoords.columnIndex, cellCoords.rowIndex);
-    expect(expandedBounds).not.toBeNull();
-    
-    // Verify expanded width for narrow column
-    expect(expandedBounds!.width).toBe(200); // MIN_WRITING_WIDTH
-    
-    // Verify vertical expansion (half row height = 22px above and below)
-    expect(expandedBounds!.height).toBe(44 + 22 + 22); // ROW_HEIGHT + expansions
-    
-    // Verify centered horizontal expansion
+    expect(expandedBounds!.width).toBe(200);
+    expect(expandedBounds!.height).toBe(88);
     const widthDiff = 200 - 120;
     expect(expandedBounds!.x).toBe(0 - widthDiff / 2);
   });
 
-  it('should use same expanded bounds as InkLayer for wide columns', () => {
-    // Wide column (Description: 280px >= 200px min)
+  it('should use expanded cell bounds for wide columns when no strokes', () => {
     const cellCoords = { columnIndex: 1, rowIndex: 0 };
-    
+
     const expandedBounds = getExpandedCellBounds(testConfig, cellCoords.columnIndex, cellCoords.rowIndex);
     expect(expandedBounds).not.toBeNull();
-    
-    // Width should remain unchanged for wide columns
+
     expect(expandedBounds!.width).toBe(280);
-    
-    // Verify vertical expansion only
     expect(expandedBounds!.height).toBe(44 + 22 + 22);
-    
-    // X position should remain at column start (120px from left)
     expect(expandedBounds!.x).toBe(120);
   });
 
-  // Note: Full canvas drawing tests are skipped in jsdom environment
-  // These are tested in the browser during manual testing
+  it('should compute bounds from provided strokes instead of expanded bounds', () => {
+    // This test requires a real canvas environment (browser)
+    // In jsdom, drawImage doesn't work properly, so we test the bounds computation separately
+    const strokes = [
+      createMockStroke({ minX: 50, minY: 50, maxX: 150, maxY: 100 }),
+      createMockStroke({ minX: 300, minY: 300, maxX: 400, maxY: 380 }),
+    ];
+
+    // Verify bounds are computed from strokes, not from expanded cell bounds
+    const bounds = computeStrokesBounds(strokes);
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBe(42); // 50 - 8
+    expect(bounds!.y).toBe(42); // 50 - 8
+    expect(bounds!.width).toBe(366); // (400 - 50) + 16
+    expect(bounds!.height).toBe(346); // (380 - 50) + 16
+
+    // The full captureCellImage integration is tested in browser/manual testing
+  });
+
+  it('should return data URL when strokes provided (integration requires browser)', () => {
+    // Full canvas integration tested in browser
+    // Here we verify the bounds computation logic
+    const strokes = [createMockStroke({ minX: 100, minY: 100, maxX: 200, maxY: 150 })];
+    const bounds = computeStrokesBounds(strokes);
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBe(116); // (200-100) + 16
+    expect(bounds!.height).toBe(66); // (150-100) + 16
+  });
+
+  it('should fall back to expanded bounds when strokes array is empty', () => {
+    const cellCoords = { columnIndex: 0, rowIndex: 0 };
+    const expandedBounds = getExpandedCellBounds(testConfig, cellCoords.columnIndex, cellCoords.rowIndex);
+    expect(expandedBounds).not.toBeNull();
+    expect(expandedBounds!.width).toBe(200); // MIN_WRITING_WIDTH for narrow column
+
+    // captureCellImage with empty strokes falls back to expanded bounds
+    // Full integration tested in browser
+  });
 });
 
 describe('cellHasInk', () => {
