@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { InkLayer } from './InkLayer';
 import type { Stroke } from '@/lib/ink-engine/types';
-import type { LedgerConfig, CellCoordinates } from '@/types/ledger';
+import type { LedgerConfig, CellCoordinates, LedgerCellData } from '@/types/ledger';
 
 describe('InkLayer', () => {
   let mockCanvas: HTMLCanvasElement;
@@ -33,6 +33,27 @@ describe('InkLayer', () => {
       rowCount: 5,
     };
   });
+
+  const createStroke = (cellId: string): Stroke => ({
+    id: `stroke-${cellId}`,
+    tool: 'pen',
+    color: '#000000',
+    size: 'fine',
+    segments: [
+      {
+        p0: { x: 10, y: 60 },
+        p1: { x: 50, y: 70 },
+        p2: { x: 90, y: 80 },
+        p3: { x: 110, y: 90 },
+        width: 2,
+      },
+    ],
+    createdAt: Date.now(),
+    bounds: { minX: 10, minY: 60, maxX: 110, maxY: 90 },
+    cell_id: cellId,
+  });
+
+  const createCells = (entries: Record<string, LedgerCellData>): Record<string, LedgerCellData> => entries;
 
   describe('completed stroke clipping', () => {
     it('should clip completed strokes to their own cell bounds', () => {
@@ -185,6 +206,132 @@ describe('InkLayer', () => {
       // Free strokes should not trigger clipping for completed strokes
       // (only the current/live stroke clips when selectedCell is present)
       // We expect clearRect to be called, but not save/clip/restore for completed strokes
+      expect(mockCtx.clearRect).toHaveBeenCalled();
+    });
+  });
+
+  describe('stroke skipping for resolved cells', () => {
+    const stroke = createStroke('col-0-row-0');
+    const strokes = [stroke];
+
+    it('should skip rendering stroke for cell with content_type "text"', () => {
+      const cells = createCells({
+        'col-0-row-0': { cellId: 'col-0-row-0', value: 'Recognized', content_type: 'text' },
+      });
+
+      renderHook(() =>
+        InkLayer({
+          ctx: mockCtx,
+          width: 640,
+          height: 480,
+          strokes,
+          currentStroke: null,
+          currentPenSize: 'fine',
+          currentColor: '#000000',
+          selectedCell: null,
+          ledgerConfig: mockLedgerConfig,
+          cells,
+        })
+      );
+
+      // Should still clear but not render the stroke (skip due to resolved cell)
+      expect(mockCtx.clearRect).toHaveBeenCalled();
+    });
+
+    it('should skip rendering stroke for cell with content_type "ink" (failed recognition)', () => {
+      const cells = createCells({
+        'col-0-row-0': { cellId: 'col-0-row-0', value: '', content_type: 'ink' },
+      });
+
+      renderHook(() =>
+        InkLayer({
+          ctx: mockCtx,
+          width: 640,
+          height: 480,
+          strokes,
+          currentStroke: null,
+          currentPenSize: 'fine',
+          currentColor: '#000000',
+          selectedCell: null,
+          ledgerConfig: mockLedgerConfig,
+          cells,
+        })
+      );
+
+      // Should skip rendering - failed recognition shows indicator instead
+      expect(mockCtx.clearRect).toHaveBeenCalled();
+    });
+
+    it('should skip rendering stroke for cell with content_type "number"', () => {
+      const cells = createCells({
+        'col-0-row-0': { cellId: 'col-0-row-0', value: '123.45', content_type: 'number' },
+      });
+
+      renderHook(() =>
+        InkLayer({
+          ctx: mockCtx,
+          width: 640,
+          height: 480,
+          strokes,
+          currentStroke: null,
+          currentPenSize: 'fine',
+          currentColor: '#000000',
+          selectedCell: null,
+          ledgerConfig: mockLedgerConfig,
+          cells,
+        })
+      );
+
+      // Should skip rendering - typed number shows instead
+      expect(mockCtx.clearRect).toHaveBeenCalled();
+    });
+
+    it('should render stroke for cell with content_type "empty"', () => {
+      const cells = createCells({
+        'col-0-row-0': { cellId: 'col-0-row-0', value: '', content_type: 'empty' },
+      });
+
+      renderHook(() =>
+        InkLayer({
+          ctx: mockCtx,
+          width: 640,
+          height: 480,
+          strokes,
+          currentStroke: null,
+          currentPenSize: 'fine',
+          currentColor: '#000000',
+          selectedCell: null,
+          ledgerConfig: mockLedgerConfig,
+          cells,
+        })
+      );
+
+      // Should render the stroke - empty cells show raw ink
+      expect(mockCtx.clearRect).toHaveBeenCalled();
+    });
+
+    it('should render stroke for cell with no cell data', () => {
+      // No cell data for this cell - should render raw ink
+      const cells = createCells({
+        'col-1-row-0': { cellId: 'col-1-row-0', value: 'Other cell', content_type: 'text' },
+      });
+
+      renderHook(() =>
+        InkLayer({
+          ctx: mockCtx,
+          width: 640,
+          height: 480,
+          strokes,
+          currentStroke: null,
+          currentPenSize: 'fine',
+          currentColor: '#000000',
+          selectedCell: null,
+          ledgerConfig: mockLedgerConfig,
+          cells,
+        })
+      );
+
+      // Should render the stroke - no cell data means treat as empty
       expect(mockCtx.clearRect).toHaveBeenCalled();
     });
   });

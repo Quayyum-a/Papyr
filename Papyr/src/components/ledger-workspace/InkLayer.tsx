@@ -84,11 +84,13 @@ export function InkLayer({
 
       // Render all completed strokes to offscreen canvas
       // Each stroke is clipped to its own cell's bounds (if it has a cell_id)
-      // SKIP strokes for cells that have recognized text (content_type 'text') - show text instead
+      // SKIP strokes for cells that have resolved content (text, number, or failed ink)
+      // Only cells with 'empty' content_type (or no cell data) should show raw ink
       for (const stroke of strokes) {
-        // Check if this stroke's cell has recognized text
-        if (stroke.cell_id && cells[stroke.cell_id]?.content_type === 'text') {
-          // Skip rendering this stroke - the cell will show recognized text instead
+        // Check if this stroke's cell has resolved content
+        const cellData = stroke.cell_id ? cells[stroke.cell_id] : null;
+        if (cellData && cellData.content_type !== 'empty') {
+          // Skip rendering this stroke - the cell will show text/number/indicator instead
           continue;
         }
 

@@ -179,32 +179,51 @@ export function useLedgerWorkspace({
           console.log('[INK] RECOGNITION_SUCCESS', {
             segmentId: segment.id,
             text: recognizedText,
+            cellId,
           });
-          
+
           // Mark segment as recognized with the result
           sessionManager.markSegmentRecognized(segment.id, recognizedText);
-          
+
           // Store recognized text in cell data
-          setCells(prevCells => ({
-            ...prevCells,
-            [cellId]: {
+          setCells(prevCells => {
+            const nextCells: Record<string, import('@/types/ledger').LedgerCellData> = {
+              ...prevCells,
+              [cellId]: {
+                cellId,
+                value: recognizedText,
+                content_type: 'text' as const,
+              },
+            };
+            // DEBUG: Log what we're setting
+            console.log('[useLedgerWorkspace] setCells after RECOGNITION_SUCCESS:', {
               cellId,
-              value: recognizedText,
-              content_type: 'text',
-            },
-          }));
+              newCellData: nextCells[cellId],
+              allCellsKeys: Object.keys(nextCells),
+            });
+            return nextCells;
+          });
         } else {
           console.warn('[INK] RECOGNITION_FAILED or empty', { segmentId: segment.id, result: recognizedText });
           sessionManager.markSegmentRecognized(segment.id);
           // Set content_type to 'ink' with empty value to show indicator
-          setCells(prevCells => ({
-            ...prevCells,
-            [cellId]: {
+          setCells(prevCells => {
+            const nextCells: Record<string, import('@/types/ledger').LedgerCellData> = {
+              ...prevCells,
+              [cellId]: {
+                cellId,
+                value: '',
+                content_type: 'ink' as const,
+              },
+            };
+            // DEBUG: Log what we're setting
+            console.log('[useLedgerWorkspace] setCells after RECOGNITION_FAILED:', {
               cellId,
-              value: '',
-              content_type: 'ink',
-            },
-          }));
+              newCellData: nextCells[cellId],
+              allCellsKeys: Object.keys(nextCells),
+            });
+            return nextCells;
+          });
         }
       } catch (error) {
         console.error('[INK] Recognition error:', error);
@@ -214,6 +233,11 @@ export function useLedgerWorkspace({
         setRecognizingCells(prev => {
           const next = new Set(prev);
           next.delete(cellId);
+          // DEBUG: Log recognizingCells cleanup
+          console.log('[useLedgerWorkspace] recognizingCells cleanup:', {
+            cellId,
+            remainingRecognizing: Array.from(next),
+          });
           return next;
         });
       }

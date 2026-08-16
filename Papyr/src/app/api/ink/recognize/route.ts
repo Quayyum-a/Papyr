@@ -114,9 +114,19 @@ export async function POST(request: NextRequest) {
 
   // Build prompt
   let promptText = 'Transcribe the handwritten text in this image. This is natural handwriting, possibly cursive or with connected letters, written quickly — take your time interpreting stroke shapes and letter boundaries rather than assuming clean print handwriting. Respond with only the transcribed text and nothing else — no explanation, no quotation marks. If nothing is legibly written, respond with an empty string.';
-  
+
   if (columnLabel) {
     promptText += ` This is from a ledger column labeled '${columnLabel}' — if the writing is ambiguous, prefer an interpretation that fits that column (e.g. a date, a name, or a currency amount, whichever fits the label).`;
+
+    // Additional guidance for numeric/symbol-heavy columns
+    const numericLabels = ['debit', 'credit', 'amount', 'date', 'balance', 'total', 'quantity', 'price', 'cost', 'value', 'sum'];
+    const isNumericColumn = numericLabels.some(label =>
+      columnLabel.toLowerCase().includes(label)
+    );
+
+    if (isNumericColumn) {
+      promptText += ` IMPORTANT: This column expects numeric data (amounts, dates, or quantities). Pay close attention to digit shapes — do not guess a plausible-looking word instead of a number. Currency symbols (₦, $, €, £, etc.), commas, decimal points, and slashes in dates (e.g. 12/25/2024) all matter and should be transcribed exactly as written, not paraphrased or omitted. If you see digits, transcribe them as digits.`;
+    }
   }
 
   // Try each model in order until one succeeds

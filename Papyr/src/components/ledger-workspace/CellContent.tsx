@@ -19,6 +19,15 @@ export function CellContent({
   selectedCell,
   recognizingCells = new Set(),
 }: CellContentProps) {
+  // DEBUG: Log cells state on every render to debug missing recognized text
+  // eslint-disable-next-line no-console
+  console.log('[CellContent] Render:', {
+    cellsKeys: Object.keys(cells),
+    cells: JSON.stringify(cells, null, 2),
+    selectedCell,
+    recognizingCells: Array.from(recognizingCells),
+  });
+
   const { columns, rowCount } = ledgerConfig;
 
   // Sort columns by position
