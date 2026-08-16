@@ -5,9 +5,10 @@ import { LedgerCanvas } from '@/components/ledger-workspace/LedgerCanvas';
 import { ColumnHeaders } from '@/components/ledger-workspace/ColumnHeaders';
 import { CellHighlights } from '@/components/ledger-workspace/CellHighlights';
 import { CellContent } from '@/components/ledger-workspace/CellContent';
+import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
 import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
-import type { LedgerPageContent } from '@/types/ledger';
+import type { LedgerPageContent, CellCoordinates } from '@/types/ledger';
 import { getLedgerContentDimensions } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
 
@@ -69,6 +70,12 @@ export function LedgerWorkspace({
 
     // Cell data
     cells,
+
+    // Calendar picker
+    calendarPickerCell,
+    openCalendarPicker,
+    closeCalendarPicker,
+    setCellDate,
 
     // Pointer handlers
     handlePointerDown,
@@ -215,8 +222,35 @@ export function LedgerWorkspace({
             ledgerConfig={ledgerConfig}
             selectedCell={selectedCell}
             recognizingCells={recognizingCells}
-            onCellSelect={selectCell}
+            onCellSelect={(coords) => {
+              if (coords) {
+                // Check if this is a date column and open calendar picker
+                const column = ledgerConfig.columns[coords.columnIndex];
+                if (column?.type === 'date') {
+                  openCalendarPicker(coords.columnIndex, coords.rowIndex);
+                } else {
+                  selectCell(coords);
+                }
+              } else {
+                selectCell(null);
+              }
+            }}
           />
+
+          {/* Calendar Picker for date cells */}
+          {calendarPickerCell && (
+            <CalendarPicker
+              ledgerConfig={ledgerConfig}
+              selectedCell={{
+                columnIndex: calendarPickerCell.columnIndex,
+                rowIndex: calendarPickerCell.rowIndex,
+              }}
+              cells={cells}
+              onDateSelect={setCellDate}
+              onClose={closeCalendarPicker}
+              scrollContainerRef={scrollContainerRef}
+            />
+          )}
         </div>
       </div>
 

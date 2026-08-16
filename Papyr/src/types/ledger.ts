@@ -6,20 +6,28 @@
  */
 
 /**
+ * Column type for special behavior (e.g., date picker)
+ */
+export type LedgerColumnType = 'text' | 'number' | 'date';
+
+/**
  * Represents a single column in the ledger
  */
 export interface LedgerColumn {
   /** Unique identifier for the column */
   id: string;
-  
+
   /** Display label for the column header */
   label: string;
-  
+
   /** Width of the column in pixels */
   width: number;
-  
+
   /** Position index of the column (0-based, left to right) */
   position: number;
+
+  /** Column type for special behavior (default: 'text') */
+  type?: LedgerColumnType;
 }
 
 /**
@@ -120,14 +128,14 @@ export function parseCellId(cell_id: string | null | undefined): CellCoordinates
 /**
  * Default ledger configuration (4 columns: Date, Description, Debit, Credit)
  */
-export const DEFAULT_LEDGER_CONFIG: Omit<LedgerConfig, 'columns'> & { 
-  columns: Omit<LedgerColumn, 'id'>[] 
+export const DEFAULT_LEDGER_CONFIG: Omit<LedgerConfig, 'columns'> & {
+  columns: Omit<LedgerColumn, 'id'>[]
 } = {
   columns: [
-    { label: 'Date', width: 120, position: 0 },
-    { label: 'Description', width: 280, position: 1 },
-    { label: 'Debit', width: 120, position: 2 },
-    { label: 'Credit', width: 120, position: 3 },
+    { label: 'Date', width: 120, position: 0, type: 'date' },
+    { label: 'Description', width: 280, position: 1, type: 'text' },
+    { label: 'Debit', width: 120, position: 2, type: 'number' },
+    { label: 'Credit', width: 120, position: 3, type: 'number' },
   ],
   rowCount: 20,
 };
@@ -195,17 +203,39 @@ export interface LedgerRow {
 /**
  * Create default ledger page content
  * Used when creating a new page for a book
+ * Initializes Date column cells with the current date
  */
 export function createDefaultLedgerPageContent(): LedgerPageContent {
+  const columns = DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
+    ...col,
+    id: `col-${idx}`,
+  }));
+
+  // Find Date column(s) and initialize with current date
+  const cells: Record<string, LedgerCellData> = {};
+  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  columns.forEach((col, colIdx) => {
+    if (col.type === 'date') {
+      // Initialize all rows in this date column with today's date
+      for (let rowIdx = 0; rowIdx < DEFAULT_LEDGER_CONFIG.rowCount; rowIdx++) {
+        const cellId = `col-${colIdx}-row-${rowIdx}`;
+        cells[cellId] = {
+          cellId,
+          value: today,
+          content_type: 'text',
+        };
+      }
+    }
+  });
+
   return {
     strokes: [],
     ledger: {
-      columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
-        ...col,
-        id: `col-${idx}`,
-      })),
+      columns,
       rowCount: DEFAULT_LEDGER_CONFIG.rowCount,
     },
+    cells,
   };
 }
 

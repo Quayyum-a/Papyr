@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useInkEngine } from './useInkEngine';
 import { useCellSelection } from '@/components/ledger-workspace/useCellSelection';
 import { useLedgerConfig } from '@/components/ledger-workspace/useLedgerConfig';
-import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent, type LedgerConfig, type LedgerColumn, getCellId } from '@/types/ledger';
+import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent, type LedgerConfig, type LedgerColumn, type LedgerCellData, getCellId } from '@/types/ledger';
 import type { RawPoint } from '@/lib/ink-engine/types';
 import { captureCellImage, recognizeInk } from '@/lib/ink-recognition';
 import { HandwritingSessionManager } from '@/lib/handwriting-session';
@@ -58,9 +58,12 @@ export function useLedgerWorkspace({
   const [recognizingCells, setRecognizingCells] = useState<Set<string>>(new Set());
   
   // Cell data state (recognized text and typed values)
-  const [cells, setCells] = useState<Record<string, import('@/types/ledger').LedgerCellData>>(
+  const [cells, setCells] = useState<Record<string, LedgerCellData>>(
     initialContent?.cells || {}
   );
+
+  // Calendar picker state
+  const [calendarPickerCell, setCalendarPickerCell] = useState<{ cellId: string; columnIndex: number; rowIndex: number } | null>(null);
   
   // Refs
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -394,11 +397,49 @@ export function useLedgerWorkspace({
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      
+
       // Cleanup session manager
       sessionManager.destroy();
     };
   }, [sessionManager]);
+
+  // Open calendar picker for a date cell
+  const openCalendarPicker = useCallback((columnIndex: number, rowIndex: number) => {
+    const cellId = getCellId({ columnIndex, rowIndex });
+    const cellData = cells[cellId];
+
+    // Only open for date-type columns
+    const column = ledgerConfig.ledgerConfig.columns[columnIndex];
+    if (column?.type === 'date') {
+      setCalendarPickerCell({ cellId, columnIndex, rowIndex });
+    }
+  }, [cells, ledgerConfig.ledgerConfig.columns]);
+
+  // Close calendar picker
+  const closeCalendarPicker = useCallback(() => {
+    setCalendarPickerCell(null);
+  }, []);
+
+  // Set date for a cell from calendar picker
+  const setCellDate = useCallback((cellId: string, date: Date) => {
+    const formattedDate = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+
+    setCells(prevCells => ({
+      ...prevCells,
+      [cellId]: {
+        cellId,
+        value: formattedDate,
+        content_type: 'text',
+      },
+    }));
+
+    // Close picker after selection
+    setCalendarPickerCell(null);
+  }, []);
 
   return {
     // Ink engine
@@ -422,13 +463,19 @@ export function useLedgerWorkspace({
     // Cell data
     cells,
     getCellValue: useCallback((cellId: string) => cells[cellId]?.value, [cells]),
-    
+
+    // Calendar picker
+    calendarPickerCell,
+    openCalendarPicker,
+    closeCalendarPicker,
+    setCellDate,
+
     // Pointer handlers
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     handlePointerLeave,
-    
+
     // Metadata
     bookId,
     pageId,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { LEDGER_CONSTANTS, EXPANDED_CELL_CONSTANTS, type CellCoordinates, type LedgerConfig, getCellId, getExpandedCellBounds } from '@/types/ledger';
+import { LEDGER_CONSTANTS, type CellCoordinates, type LedgerConfig, getCellId } from '@/types/ledger';
 
 interface CellHighlightsProps {
   ledgerConfig: LedgerConfig;
@@ -209,29 +209,6 @@ export function CellHighlights({
         className="sr-only"
       />
 
-      {/* Expanded writing zone indicator for selected cell */}
-      {selectedCell && (() => {
-        const expandedBounds = getExpandedCellBounds(ledgerConfig, selectedCell.columnIndex, selectedCell.rowIndex);
-        if (!expandedBounds) return null;
-        
-        return (
-          <div
-            className="absolute pointer-events-none transition-opacity duration-200"
-            style={{
-              left: expandedBounds.x,
-              top: expandedBounds.y,
-              width: expandedBounds.width,
-              height: expandedBounds.height,
-              backgroundColor: EXPANDED_CELL_CONSTANTS.EXPANDED_ZONE_COLOR,
-              opacity: EXPANDED_CELL_CONSTANTS.EXPANDED_ZONE_OPACITY,
-              border: '1px dashed rgba(251, 191, 36, 0.4)',
-              borderRadius: '4px',
-            }}
-            aria-hidden="true"
-          />
-        );
-      })()}
-
       {/* Render grid of cells */}
       {Array.from({ length: rowCount }).map((_, rowIndex) => (
         <div
@@ -264,9 +241,9 @@ export function CellHighlights({
                 key={column.id}
                 ref={(el) => { if (el) cellRefsRef.current.set(cellKey, el); }}
                 className={`relative cursor-pointer transition-all duration-100 ease-out ${
-                  isSelected 
-                    ? 'bg-yellow-50 pointer-events-none border-2 border-yellow-300 md:border-yellow-200' 
-                    : 'hover:bg-gray-50 pointer-events-auto'
+                  isSelected
+                    ? 'pointer-events-none'  // Selected cell - no background color, just border
+                    : 'hover:bg-gray-50/50 pointer-events-auto'  // Very subtle hover
                 } ${isFocused ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
                 style={{
                   width: column.width,
@@ -282,19 +259,20 @@ export function CellHighlights({
                 aria-colindex={columnIndex + 1}
                 aria-rowindex={rowIndex + 1}
               >
-                {/* Selected cell highlight with smooth transition - more prominent on mobile */}
+                {/* Selected cell highlight - subtle border only, transparent background */}
                 {isSelected && (
                   <div
                     className="absolute inset-0 pointer-events-none transition-opacity duration-100"
                     style={{
-                      backgroundColor: LEDGER_CONSTANTS.CELL_HIGHLIGHT_COLOR,
-                      opacity: LEDGER_CONSTANTS.CELL_HIGHLIGHT_OPACITY,
-                      border: '2px solid rgba(251, 191, 36, 0.5)',
+                      backgroundColor: 'transparent',  // No background color
+                      border: '1.5px solid #FBBF24',  // Amber border
+                      borderRadius: '2px',
+                      boxShadow: 'inset 0 0 0 1px rgba(251, 191, 36, 0.15)',  // Very subtle inner glow
                     }}
                     aria-hidden="true"
                   />
                 )}
-                
+
                 {/* Recognition indicator */}
                 {isRecognizing && (
                   <div
