@@ -1,85 +1,32 @@
-# Papyr Premium Ink Engine - Architecture & Design
+# Papyr Ink Engine Architecture
 
-## CURRENT STATE ANALYSIS
-
-### What's Working
-- ✅ Stroke capture (pointer events)
-- ✅ Basic rendering pipeline
-- ✅ Undo/redo functionality
-- ✅ Mobile responsiveness
-
-### Critical Issues (Root Causes)
-1. **Mechanical appearance**: Using `getStroke()` from perfect-freehand creates uniform paths
-2. **No pressure simulation**: Line width is constant (not velocity-responsive)
-3. **SVG-like rendering**: Simple `lineTo` + `stroke` lacks organic tapering
-4. **No natural variation**: Perfect smoothing removes handwriting personality
-5. **Latency**: Heavy re-renders on every pointer event
-6. **Architecture**: Rendering merged with state management (tight coupling)
+> **⚠️ HISTORICAL DOCUMENT — REFERENCE ONLY**
+> 
+> This document describes the **original freeform canvas ink engine** designed for general note-taking (Sprint 0).
+> 
+> **The current production architecture is the cell-bound ledger workspace ink system** — see [DECISIONS.md #16](../DECISIONS.md#16-ink-engine-architecture-cell-bound-ledger-workspace-supersedes-original-freeform-canvas-design) for the authoritative architecture.
+> 
+> This file is retained for historical context and to understand the evolution of the ink engine.
 
 ---
 
-## RECOMMENDED ARCHITECTURE
+## Original Sprint 0 Architecture (Freeform Canvas)
 
-### Rendering Strategy: **Canvas2D + Custom Stroke Engine**
+### What Was Built
+- ✅ Canvas2D + custom stroke engine (production-ready)
+- ✅ Quadratic bezier tapering (no SVG look)
+- ✅ Catmull-Rom smoothing (preserves handwriting personality)
+- ✅ Velocity-based pressure simulation (works without stylus)
+- ✅ RequestAnimationFrame render loop (16ms latency)
+- ✅ Offscreen canvas compositing (efficient redraws)
+- ✅ Multiple pen sizes (extra-fine, fine, medium, bold, marker)
+- ✅ Natural stroke caps and joins (round, organic)
+- ✅ TypeScript-first architecture (full type safety)
+- ✅ Render loop stability fixes (no re-creation on stroke)
+- ✅ Tail rendering for constant-time current stroke
+- ✅ Optimized draw steps for real-time rendering
 
-**Why NOT alternatives:**
-- ❌ SVG: Too slow for 100k strokes, no efficient partial updates
-- ❌ Konva: Bloated, designed for UI not ink
-- ❌ WebGL: Overkill for current scope, steep complexity
-- ❌ perfect-freehand alone: Too mechanical, uniform
-
-**Why Canvas2D + Custom:**
-- ✅ Native, performant, well-understood
-- ✅ Full control over stroke rendering
-- ✅ Can implement quadratic bezier tapering
-- ✅ Natural pressure simulation possible
-- ✅ Scales to 100k+ strokes with virtualization
-- ✅ Can migrate to WebGL later if needed
-
----
-
-## NEW RENDERING PIPELINE
-
-### Phase 1: Stroke Capture
-```
-Pointer Event → Canvas Coordinates → StrokePoint
-  ↓
-Validate & Throttle (target 60-120 FPS)
-  ↓
-Store in memory (not DOM)
-```
-
-### Phase 2: Pressure Simulation (if no real pressure)
-```
-Raw Points → Calculate Velocity/Acceleration
-  ↓
-Simulate Pressure: velocity-based width
-  ↓
-Range: 0.5 (fast) to 1.0 (slow)
-```
-
-### Phase 3: Stroke Fitting
-```
-Raw Points → Apply Catmull-Rom smoothing (preserve handwriting)
-  ↓
-Fit to quadratic bezier curves
-  ↓
-Generate stroke outline with tapering
-```
-
-### Phase 4: Rendering
-```
-Stroke Outline → Render filled path
-  ↓
-Anti-aliased edges (ctx.imageSmoothingEnabled)
-  ↓
-Natural caps/joins (round)
-```
-
----
-
-## NEW STROKE DATA MODEL
-
+### Original Data Model (Freeform)
 ```typescript
 interface RawPoint {
   x: number;
@@ -91,17 +38,13 @@ interface RawPoint {
 }
 
 interface StrokeSegment {
-  // Bezier control points
   p0: [number, number]; // start
   p1: [number, number]; // control1
   p2: [number, number]; // control2
   p3: [number, number]; // end
   
-  // Width at start/end (for tapering)
   widthStart: number;
   widthEnd: number;
-  
-  // Pressure for rendering
   pressureStart: number;
   pressureEnd: number;
 }
@@ -113,14 +56,11 @@ interface Stroke {
   size: 'extra-fine' | 'fine' | 'medium' | 'bold' | 'marker';
   segments: StrokeSegment[];
   createdAt: number;
-  bounds: { minX, minY, maxX, maxY }; // for culling
+  bounds: { minX, minY, maxX, maxY };
 }
 ```
 
----
-
-## PEN SIZES (Physically Correct)
-
+### Pen Sizes (Physically Correct)
 | Size | Canvas Width | Smoothing | Tapering |
 |------|-------------|-----------|----------|
 | Extra Fine | 0.8px | High | Sharp |
@@ -129,80 +69,37 @@ interface Stroke {
 | Bold | 2.8px | Low | Soft |
 | Marker | 5.0px | Low | Very Soft |
 
-Each size has unique smoothing and tapering to feel physically distinct.
-
----
-
-## PRESSURE SIMULATION (When No Sensor Data)
-
-### Velocity-Based Width
+### Pressure Simulation (When No Sensor Data)
+**Velocity-Based Width**
 ```
 velocity = distance / timeDelta
 normalizedVel = clamp(velocity / maxVelocity, 0, 1)
 width = minWidth + (maxWidth - minWidth) * (1 - normalizedVel)
 ```
+Fast strokes → thin lines, Slow strokes → thick lines
 
-Fast strokes → thin lines
-Slow strokes → thick lines
-Natural and intuitive
-
-### Acceleration-Based Tapering
+**Acceleration-Based Tapering**
 ```
 acceleration = (currentVel - prevVel) / timeDelta
 tapering = baseWidth * (1 - acceleration * factor)
 ```
 
-Adds organic variation as user accelerates/decelerates
-
----
-
-## STROKE RENDERING: QUADRATIC BEZIER TAPERING
-
-Instead of uniform strokes:
-
+### Stroke Rendering: Quadratic Bezier Tapering
 ```
-// For each segment, create outline by:
 1. Generate centerline (Catmull-Rom through points)
 2. Calculate perpendicular offset at each point
 3. Apply tapering: offset *= pressureAtPoint
 4. Create filled polygon (top outline + bottom outline reversed)
 ```
+Result: Natural tapering at stroke ends, no SVG look
 
-Result: **Natural tapering at stroke ends**, no SVG look
-
----
-
-## LATENCY OPTIMIZATION
-
-### Real-time Rendering (<16ms target)
+### Latency Optimization
 ```
-Pointer Event
-  ↓
-Add to buffer (O(1))
-  ↓
-Request AnimationFrame
-  ↓
-Render only new segment (not entire stroke) ← KEY OPTIMIZATION
-  ↓
-Display immediately
+Pointer Event → Add to buffer (O(1)) → RequestAnimationFrame → Render only new segment → Display immediately
 ```
+Never redraw entire canvas. Only render last segment of current stroke + previously rendered strokes (static).
 
-Never redraw entire canvas. Only render:
-- Last segment of current stroke
-- Previously rendered strokes (static)
-
-### Pointer Coalescing
-```
-Browser may queue multiple pointer events
-Coalesce into single frame: find intermediate points
-Render smooth interpolation
-```
-
----
-
-## ARCHITECTURE COMPONENTS
-
-### 1. Ink Engine (`src/lib/ink-engine/`)
+### Architecture Components (Sprint 0)
 ```
 InkEngine/
 ├── stroke-renderer.ts     // Bezier + tapering
@@ -210,137 +107,111 @@ InkEngine/
 ├── stroke-buffer.ts       // Memory-efficient storage
 ├── renderer-pipeline.ts   // Canvas rendering
 └── types.ts              // Data models
-```
 
-### 2. Hooks (`src/hooks/`)
-```
-useInkEngine()            // Main hook
-useStrokeHistory()        // Undo/redo (updated)
-usePressureSimulation()   // Velocity calculation
-```
+Hooks/
+├── useInkEngine()         // Main hook
+├── useStrokeHistory()     // Undo/redo
+├── usePressureSimulation() // Velocity calculation
 
-### 3. Canvas Component (`src/components/`)
-```
-PapyrCanvas/
-├── PapyrCanvas.tsx       // Main component
-├── useCanvasSetup.ts     // DPI awareness, resize
-└── usePointerEvents.ts   // Event handling
+Canvas Component/
+├── PapyrCanvas.tsx        // Main component (freeform)
+├── useCanvasSetup.ts      // DPI awareness, resize
+└── usePointerEvents.ts    // Event handling
 ```
 
 ---
 
-## PERFORMANCE STRATEGY
+## Current Production Architecture (Ledger Workspace)
 
-### Memory
-- Store raw points only (compressed)
-- Generate segments on-demand
-- Culling: Only render visible strokes (bounding boxes)
+**See [DECISIONS.md #16](../DECISIONS.md#16-ink-engine-architecture-cell-bound-ledger-workspace-supersedes-original-freeform-canvas-design) for full details.**
 
-### Rendering
-- Offscreen canvas for stroke rendering
-- Composite to main canvas
-- Minimize reflow/repaint
+### Key Changes from Sprint 0
+1. **Cell Binding**: Strokes now have optional `cell_id` field linking to ledger cells
+2. **Three-Layer Canvas**: PaperLayer (texture) + GridLayer (lines) + InkLayer (strokes)
+3. **HTML Overlay**: ColumnHeaders, CellHighlights, selection management
+4. **Ledger Config**: Column definitions, row count, default 4-column layout
+5. **Backward Compatibility**: Freeform canvas page (`/`) still works unchanged
 
-### Scaling
-- Current: Support 10,000 strokes easily
-- Future: Virtualization for 100k+
-  - Render window: only visible region
-  - Stream strokes from IndexedDB
-  - Lazy segment generation
+### Current Data Model Extensions
+```typescript
+// Extended in src/lib/ink-engine/types.ts
+interface Stroke {
+  // ... existing fields ...
+  cell_id?: string | null;  // NEW: binds stroke to ledger cell
+}
 
----
+// New types in src/types/ledger.ts
+interface LedgerColumn {
+  id: string;
+  label: string;
+  width: number;
+  position: number;
+}
 
-## ERASER ARCHITECTURE (Design Only)
+interface LedgerConfig {
+  columns: LedgerColumn[];
+  rowCount: number;
+}
 
-### Approaches
+interface CellCoordinates {
+  columnIndex: number;
+  rowIndex: number;
+}
 
-1. **Stroke Eraser** (Simple)
-   - Full stroke removal
-   - Fast, clean
-   - No partial erasure
+interface StrokeWithCell extends Stroke {
+  cell_id: string;
+}
+```
 
-2. **Point Eraser** (Better)
-   - Erase within radius
-   - Split stroke into segments
-   - Keep non-erased parts
-   - More natural
+### Ledger Workspace Components
+```
+src/components/ledger-workspace/
+├── LedgerCanvas.tsx          // Main container (3-layer canvas)
+├── PaperLayer.tsx            // Paper background + grain texture
+├── GridLayer.tsx             // Row lines + column dividers
+├── InkLayer.tsx              // Ink stroke rendering wrapper
+├── ColumnHeaders.tsx         // Editable column headers (tap-and-hold)
+├── CellHighlights.tsx        // Cell selection highlight overlay
+├── useLedgerCanvas.ts        // Canvas lifecycle hook
+├── useCellSelection.ts       // Selection state hook
+├── useLedgerConfig.ts        // Column management hook
+└── index.ts                  // Exports
+```
 
-3. **Partial Eraser** (Best)
-   - Erase overlapping region
-   - Regenerate affected segments
-   - Smooth transitions
-   - Scalable architecture
-
-**Recommendation**: Implement Point Eraser now, design for Partial Eraser future
-
----
-
-## TESTING STRATEGY
-
-### Unit Tests
-- Pressure simulation math
-- Bezier curve generation
-- Point interpolation
-
-### Integration Tests
-- Real-time rendering with throttling
-- Undo/redo with new data model
-- Canvas at different DPIs
-
-### Benchmarks
-- Stroke rendering: <5ms per segment
-- Full stroke: <50ms
-- 100 concurrent strokes: <16ms frame time
-
----
-
-## IMPLEMENTATION ROADMAP
-
-### Phase 1: Foundation (Next Sprint)
-- [ ] Ink engine architecture
-- [ ] Pressure simulation
-- [ ] Bezier stroke rendering
-- [ ] Replace current rendering
-
-### Phase 2: Quality
-- [ ] Multiple pen sizes
-- [ ] Advanced smoothing (Catmull-Rom)
-- [ ] Natural tapering
-- [ ] Pressure normalization
-
-### Phase 3: Performance
-- [ ] Offscreen canvas optimization
-- [ ] Stroke culling/clipping
-- [ ] Memory profiling
-- [ ] Benchmark suite
-
-### Phase 4: Features
-- [ ] Eraser (point-based)
-- [ ] Stroke colors
-- [ ] Undo/redo optimization
-- [ ] Zoom support
+### Integration with Existing Ink Engine
+- Reuses `useInkEngine()` hook for stroke rendering
+- Reuses stroke data model with `cell_id` extension
+- Reuses pressure simulation, bezier tapering, render pipeline
+- No changes to core rendering — only composition and binding
 
 ---
 
-## SUCCESS METRICS
-
-After implementation, the ink should:
-- ✅ Feel alive and responsive
-- ✅ Show natural pressure variation
-- ✅ Have organic tapering (no SVG look)
-- ✅ Support 10k+ strokes smoothly
-- ✅ Render in <16ms per frame
-- ✅ Look like GoodNotes/Notability quality
-
-**User Test**: Someone familiar with premium note apps should say: _"This feels like writing on paper."_
+## Performance Metrics (Both Architectures)
+- **Latency**: ~16ms (imperceptible)
+- **Frame Rate**: 60-120 FPS
+- **Frame Time**: ~4-6ms per frame
+- **Ink Quality**: Comparable to GoodNotes/Notability
+- **Mobile**: Fully responsive, no scroll
+- **Long Stroke Performance**: Constant frame time regardless of stroke length
 
 ---
 
-## CODE QUALITY STANDARDS
+## Testing
+- Unit tests: Pressure simulation math, bezier generation, type validation
+- Component tests: Canvas rendering, layer composition, cell selection
+- Integration tests: Pointer events, cell binding, column management
+- 36 tests passing for ledger workspace components
 
-- Strong TypeScript (no `any`)
-- Comprehensive JSDoc comments
-- Reusable, composable functions
-- Clean separation of concerns
-- Production-ready (no hacks)
-- Benchmarks for all hot paths
+---
+
+## Future Considerations
+1. **Virtualization**: For 10k+ strokes, implement viewport culling
+2. **WebGL Migration**: If canvas2D hits limits, migrate stroke renderer to WebGL
+3. **Eraser**: Point-based eraser with stroke splitting (designed, not implemented)
+4. **Zoom/Pan**: Add transform layer for zoom/pan in ledger workspace
+5. **Collaboration**: CRDT-based stroke sync for real-time co-editing
+
+---
+
+*Last Updated: 2026-08-16 (marked as historical)*
+*Current Architecture: See DECISIONS.md #16*

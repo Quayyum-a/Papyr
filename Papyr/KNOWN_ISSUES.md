@@ -21,7 +21,74 @@ Each issue follows this format:
 
 ---
 
-### Current Sprint Issues (Sprint 0)
+### Current Sprint Issues (Sprint 2 / P301)
+
+#### KI-007: Ledger Canvas Zero-Dimension Regression
+- **ID**: KI-007
+- **Title**: Ledger canvas renders with 0×0 dimensions on initial load
+- **Status**: Open
+- **Priority**: Critical
+- **Component**: Ledger Workspace / Canvas
+- **Description**: The `LedgerCanvas` component initializes with zero width/height, causing the three-layer canvas system (PaperLayer, GridLayer, InkLayer) to not render. The canvas container has correct dimensions in DOM but the internal canvas elements are not sized properly.
+- **Steps to Reproduce**:
+  1. Navigate to `/dashboard/books/[id]/ledger`
+  2. Observe blank canvas area (no paper texture, no grid lines)
+  3. Inspect canvas elements — width/height are 0
+  4. Window resize sometimes triggers correct sizing
+- **Impact**: Ledger workspace completely unusable; users cannot write in cells
+- **Workaround**: Manual window resize sometimes fixes it; not reliable
+- **Assignee**: Drawing Engine Team
+- **Due Date**: 2026-08-20
+- **Tags**: regression, canvas, ledger, critical
+
+#### KI-008: Handwriting Recognition Not Implemented
+- **ID**: KI-008
+- **Title**: OpenRouter-based handwriting recognition endpoint not built
+- **Status**: Open
+- **Priority**: High
+- **Component**: Handwriting Recognition / API
+- **Description**: The `/api/ink/recognize-openrouter` route needs to be implemented to replace the abandoned Google Cloud Vision approach. Should accept base64 PNG image data and column label, return recognized text with confidence.
+- **Steps to Reproduce**: N/A — feature not built
+- **Impact**: Core P301 feature missing; users cannot convert handwriting to text
+- **Workaround**: None — manual entry only
+- **Assignee**: Backend Team
+- **Due Date**: 2026-08-25
+- **Tags**: feature, handwriting, recognition, openrouter, api
+
+#### KI-009: Recognized Text Storage Gap
+- **ID**: KI-009
+- **Title**: Recognized text from handwriting recognition not persisted to cell content
+- **Status**: Open
+- **Priority**: High
+- **Component**: Ledger Workspace / Data Layer
+- **Description**: When handwriting recognition is implemented, the recognized text needs to be written back to the cell's `content_data` (for `content_type: 'text'`) or stored alongside strokes. Currently no pipeline exists for this.
+- **Steps to Reproduce**: N/A — depends on KI-008
+- **Impact**: Even if recognition works, results won't be saved
+- **Workaround**: None
+- **Assignee**: Backend Team
+- **Due Date**: 2026-08-25
+- **Tags**: data, persistence, handwriting, ledger
+
+#### KI-010: Mobile Ledger Workspace Rendering
+- **ID**: KI-010
+- **Title**: Ledger canvas sizing/rendering broken on mobile viewport
+- **Status**: Open
+- **Priority**: High
+- **Component**: Ledger Workspace / Mobile
+- **Description**: The ledger workspace canvas does not adapt correctly to mobile viewport. Canvas dimensions don't account for toolbar, header, and overlay elements, causing overflow or clipping.
+- **Steps to Reproduce**:
+  1. Open ledger workspace on mobile device or Chrome DevTools device toolbar
+  2. Observe canvas extends beyond viewport or is clipped
+  3. Toolbar/column headers may overlap canvas
+- **Impact**: Ledger workspace unusable on mobile (primary target for small business users)
+- **Workaround**: None
+- **Assignee**: Frontend Team
+- **Due Date**: 2026-08-22
+- **Tags**: mobile, canvas, responsive, ledger
+
+---
+
+### Carried Over from Sprint 0
 
 #### KI-001: Canvas Performance on Low-End Devices
 - **ID**: KI-001
@@ -38,7 +105,7 @@ Each issue follows this format:
 - **Impact**: User experience degradation; drawing feels laggy and unresponsive
 - **Workaround**: Reduce stroke complexity by increasing point simplification threshold
 - **Assignee**: Performance Team
-- **Due Date**: 2026-08-15
+- **Due Date**: 2026-09-01
 - **Tags**: performance, mobile, android
 
 #### KI-002: Pressure Sensitivity Inconsistency
@@ -55,7 +122,7 @@ Each issue follows this format:
 - **Impact**: Inconsistent drawing experience across hardware
 - **Workaround**: Normalize pressure input to 0-1 range and apply device-specific curves
 - **Assignee**: Input Team
-- **Due Date**: 2026-08-10
+- **Due Date**: 2026-09-15
 - **Tags**: input, stylus, pressure
 
 #### KI-003: Touch Palm Rejection False Positives
@@ -73,7 +140,7 @@ Each issue follows this format:
 - **Impact**: Reduced usability when switching between stylus and finger input
 - **Workaround**: Lift stylus completely away from screen when using fingers
 - **Assignee**: UX Team
-- **Due Date**: 2026-08-12
+- **Due Date**: 2026-09-15
 - **Tags**: input, touch, palm-rejection
 
 #### KI-004: Local Storage Quota Exceeded Risk
@@ -90,7 +157,7 @@ Each issue follows this format:
 - **Impact**: Potential data loss if write fails due to quota exceeded
 - **Workaround**: Implement automatic cleanup of oldest strokes when approaching quota limits
 - **Assignee**: Storage Team
-- **Due Date**: 2026-08-20
+- **Due Date**: 2026-09-30
 - **Tags**: storage, offline, quota
 
 #### KI-005: Service Worker Registration Failure on Older Browsers
@@ -107,8 +174,10 @@ Each issue follows this format:
 - **Impact**: Reduced offline functionality on very old devices
 - **Workaround**: Fallback to appcache where available, otherwise document limited offline support
 - **Assignee**: Platform Team
-- **Due Date**: 2026-08-18
+- **Due Date**: 2026-09-30
 - **Tags**: pwa, service-worker, android
+
+---
 
 ### Resolved Issues (for reference)
 
@@ -137,24 +206,52 @@ Each issue follows this format:
 - **Date Resolved**: 2026-07-31
 - **Notes**: Fixed in initial sprint
 
+#### Signup Email Verification Redirect (RESOLVED)
+- **ID**: N/A (post-launch fix)
+- **Title**: Email verification link redirected to localhost instead of production callback
+- **Status**: Closed
+- **Priority**: Critical
+- **Component**: Authentication
+- **Description**: Supabase email template used hardcoded localhost redirect URL, breaking email verification in production.
+- **Resolution**: 
+  - Updated Supabase email template with production callback URL
+  - Added `getAppUrl()` utility for environment-aware URL detection
+  - Configured custom email templates with Papyr branding
+- **Date Resolved**: 2026-08-09
+- **Notes**: Fixed in Sprint 1 post-launch
+
+#### Book Creation Dynamic Color Bug (RESOLVED)
+- **ID**: N/A (post-launch fix)
+- **Title**: Book cover preview rendered as blank white box due to invalid Tailwind class construction
+- **Status**: Closed
+- **Priority**: High
+- **Component**: Frontend / Book Creation
+- **Description**: Used `bg-[{themeColor}]` dynamic class construction which Tailwind cannot compile at build time.
+- **Resolution**: 
+  - Replaced with fixed 8-theme palette
+  - Live preview uses `style={{ backgroundColor: theme.color }}` for dynamic values
+  - Serif display face (`font-serif`) for cover titles
+- **Date Resolved**: 2026-08-09
+- **Notes**: Documented in DECISIONS.md #18
+
 ---
 
-## Issue Tracking Guidelines
+### Issue Tracking Guidelines
 
-### Priority Levels
+#### Priority Levels
 - **Critical**: Blocks core functionality, data loss, or security vulnerability
 - **High**: Significantly impacts usability or core features
 - **Medium**: Noticeable inconvenience but workaround available
 - **Low**: Minor annoyance or edge case
 
-### Status Flow
+#### Status Flow
 1. **Open**: Issue identified and logged
 2. **Investigating**: Root cause analysis in progress
 3. **In Progress**: Fix being implemented
 4. **Review**: Code review and testing underway
 5. **Closed**: Issue resolved and verified
 
-### Reporting New Issues
+#### Reporting New Issues
 When reporting a new issue, please include:
 1. Clear, reproducible steps
 2. Expected vs actual behavior
@@ -163,23 +260,23 @@ When reporting a new issue, please include:
 5. Console logs and network traces if relevant
 6. Impact assessment on user experience
 
-### Review Process
+#### Review Process
 - Triaged weekly during sprint planning
 - Assigned based on component ownership and expertise
 - Reviewed for duplicates and validity
 - Estimated during planning poker sessions
 
-### Metrics
+#### Metrics
 - **MTTR** (Mean Time To Resolution): Target < 7 days for High priority
 - **Escape Rate**: Target < 5% of bugs found in production
 - **Customer Impact**: Measure via user feedback and support tickets
 
-### Document Maintenance
+#### Document Maintenance
 - Updated weekly during triage meetings
 - Archived quarterly for resolved issues
 - Linked from PROJECT_CONTEXT.md under "Known Issues"
 - Available to all team members via internal wiki
 
 --- 
-*Last Updated: 2026-07-31*
-*Total Open Issues: 5*
+*Last Updated: 2026-08-16*
+*Total Open Issues: 8 (KI-001 through KI-005 carried over, KI-007 through KI-010 new)*

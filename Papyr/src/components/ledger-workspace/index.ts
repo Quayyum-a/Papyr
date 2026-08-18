@@ -1,16 +1,18 @@
 /**
  * Ledger Workspace Components
  *
- * Three-layer canvas system for the digital ledger:
+ * Four-layer canvas system for the digital ledger:
  * - Paper layer: Realistic paper texture and background
  * - Grid layer: Row and column lines
+ * - Selection layer: Subtle cell selection highlight (canvas, below ink)
  * - Ink layer: Handwritten strokes using premium ink engine
- * - Overlay layer: Column headers and cell selection
+ * - Overlay layer: Column headers, cell selection, and calendar picker
  */
 
 export { LedgerCanvas } from './LedgerCanvas';
 export { PaperLayer } from './PaperLayer';
 export { GridLayer } from './GridLayer';
+export { SelectionLayer } from './SelectionLayer';
 export { InkLayer } from './InkLayer';
 export { ColumnHeaders } from './ColumnHeaders';
 export { CellHighlights } from './CellHighlights';

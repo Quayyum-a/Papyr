@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useLedgerCanvas } from './useLedgerCanvas';
 import { PaperLayer } from './PaperLayer';
 import { GridLayer } from './GridLayer';
+import { SelectionLayer } from './SelectionLayer';
 import { InkLayer } from './InkLayer';
 import type { LedgerConfig, CellCoordinates } from '@/types/ledger';
 import type { Stroke, RawPoint, PenSize } from '@/lib/ink-engine/types';
@@ -29,13 +30,14 @@ interface LedgerCanvasProps {
 
 /**
  * Main ledger canvas component
- * Manages three stacked canvas layers: paper, grid, and ink
- * 
+ * Manages four stacked canvas layers: paper, grid, selection, and ink
+ *
  * Architecture:
  * - Z-index 1: Paper background with texture
  * - Z-index 1: Grid lines (rows and columns)
+ * - Z-index 1.5: Selection highlight (canvas layer, BELOW ink)
  * - Z-index 2: Ink strokes
- * - Z-index 3: HTML overlay (rendered separately)
+ * - Z-index 3+: HTML overlay (rendered separately)
  */
 export function LedgerCanvas({
   ledgerConfig,
@@ -57,9 +59,11 @@ export function LedgerCanvas({
   const {
     paperCanvasRef,
     gridCanvasRef,
+    selectionCanvasRef,
     inkCanvasRef: internalInkCanvasRef,
     paperCtx,
     gridCtx,
+    selectionCtx,
     inkCtx,
     canvasSize,
     isReady,
@@ -118,6 +122,14 @@ export function LedgerCanvas({
         aria-hidden="true"
       />
 
+      {/* Selection layer (z-index: 1.5, between grid and ink) */}
+      <canvas
+        ref={selectionCanvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ zIndex: 1.5 }}
+        aria-hidden="true"
+      />
+
       {/* Ink layer (z-index: 2) */}
       <canvas
         ref={internalInkCanvasRef}
@@ -141,6 +153,14 @@ export function LedgerCanvas({
             width={canvasSize.width}
             height={canvasSize.height}
             ledgerConfig={ledgerConfig}
+          />
+          <SelectionLayer
+            key={`selection-${renderKey}`}
+            ctx={selectionCtx}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            ledgerConfig={ledgerConfig}
+            selectedCell={selectedCell}
           />
           <InkLayer
             key={`ink-${renderKey}`}

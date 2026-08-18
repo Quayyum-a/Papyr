@@ -300,6 +300,13 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=public_anon_key
 ```
 
+### Handwriting Recognition (OpenRouter)
+```
+OPENROUTER_API_KEY=sk-or-xxxxxxxxxxxx
+OPENROUTER_VISION_MODELS=openai/gpt-4o,anthropic/claude-3.5-sonnet
+```
+Required for `/api/ink/recognize-openrouter` endpoint (P301 handwriting recognition feature).
+
 ### Development Specific (in .env.local)
 ```
 # Optional local Supabase

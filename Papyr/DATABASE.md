@@ -3,20 +3,20 @@
 ## Database Overview
 Papyr uses Supabase PostgreSQL as the primary relational database for storing structured data. The schema is designed to be extensible and follows normalization principles to minimize redundancy.
 
-## Database Schema
+## Database Schema (Current as of 2026-08-16)
 
-### 1. Users Table
+### 1. Profiles Table
 Stores user account information linked to Supabase Auth.
 
 ```sql
-Table: users
+Table: profiles
 Columns:
 - id: UUID (Primary Key, references auth.users.id)
-- email: TEXT (Unique, from auth.users.email)
-- full_name: TEXT
+- email: TEXT (NOT NULL)
+- display_name: TEXT
 - avatar_url: TEXT
-- created_at: TIMESTAMPTZ
-- updated_at: TIMESTAMPTZ
+- created_at: TIMESTAMPTZ DEFAULT NOW()
+- updated_at: TIMESTAMPTZ DEFAULT NOW()
 ```
 
 ### 2. Books Table
@@ -26,15 +26,16 @@ Represents a ledger notebook.
 Table: books
 Columns:
 - id: UUID (Primary Key, default uuid_generate_v4())
-- user_id: UUID (Foreign Key to users.id, NOT NULL)
+- user_id: UUID (Foreign Key to auth.users.id, NOT NULL, ON DELETE CASCADE)
 - title: TEXT (NOT NULL)
-- cover_color: TEXT (NOT NULL, references color palette)
-- created_at: TIMESTAMPTZ (NOT NULL, default now())
-- updated_at: TIMESTAMPTZ (NOT NULL, default now())
-- archived: BOOLEAN (DEFAULT false)
+- description: TEXT
+- cover_color: TEXT DEFAULT '#3B82F6'
+- cover_theme: TEXT DEFAULT 'Graphite'
+- created_at: TIMESTAMPTZ DEFAULT NOW()
+- updated_at: TIMESTAMPTZ DEFAULT NOW()
+
 Indexes:
 - idx_books_user_id (user_id)
-- idx_books_updated_at (updated_at)
 ```
 
 ### 3. Pages Table
@@ -45,13 +46,19 @@ Table: pages
 Columns:
 - id: UUID (Primary Key, default uuid_generate_v4())
 - book_id: UUID (Foreign Key to books.id, NOT NULL, ON DELETE CASCADE)
-- title: TEXT (Optional, e.g., "January Expenses")
+- page_number: INTEGER (NOT NULL)
+- title: TEXT
+- content: JSONB DEFAULT '{"strokes": [], "tables": []}'
 - position: INTEGER (NOT NULL, for ordering within book)
-- created_at: TIMESTAMPTZ (NOT NULL, default now())
-- updated_at: TIMESTAMPTZ (NOT NULL, default now())
+- created_at: TIMESTAMPTZ DEFAULT NOW()
+- updated_at: TIMESTAMPTZ DEFAULT NOW()
+
 Indexes:
 - idx_pages_book_id (book_id)
 - idx_pages_book_id_position (book_id, position)
+
+Constraints:
+- UNIQUE(book_id, page_number)
 ```
 
 ### 4. Tables (Grids) on Pages
@@ -62,63 +69,42 @@ Table: tables
 Columns:
 - id: UUID (Primary Key, default uuid_generate_v4())
 - page_id: UUID (Foreign Key to pages.id, NOT NULL, ON DELETE CASCADE)
-- title: TEXT (Optional)
-- columns: JSONB (NOT NULL, array of column definitions: [{id, label, width}])
-- rows: JSONB (NOT NULL, array of row data, each cell can contain rich content)
-- width: INTEGER (NOT NULL, total width in grid units)
-- height: INTEGER (NOT NULL, total height in grid units)
-- position_x: INTEGER (NOT NULL, x-coordinate on page)
-- position_y: INTEGER (NOT NULL, y-coordinate on page)
-- created_at: TIMESTAMPTZ (NOT NULL, default now())
-- updated_at: TIMESTAMPTZ (NOT NULL, default now())
+- title: TEXT
+- rows: INTEGER NOT NULL
+- columns: INTEGER NOT NULL
+- cells: JSONB DEFAULT '[]'
+- x: REAL DEFAULT 0
+- y: REAL DEFAULT 0
+- width: REAL DEFAULT 300
+- height: REAL DEFAULT 200
+- created_at: TIMESTAMPTZ DEFAULT NOW()
+- updated_at: TIMESTAMPTZ DEFAULT NOW()
+
 Indexes:
 - idx_tables_page_id (page_id)
 ```
 
-### 5. Cells Table
-Individual cells that can contain freehand drawing or other content.
-
-```sql
-Table: cells
-Columns:
-- id: UUID (Primary Key, default uuid_generate_v4())
-- table_id: UUID (Foreign Key to tables.id, NOT NULL, ON DELETE CASCADE)
-- row_index: INTEGER (NOT NULL)
-- column_index: INTEGER (NOT NULL)
-- content_type: TEXT (NOT NULL, enum: 'ink', 'text', 'empty')
-- content_data: JSONB (nullable, stores content based on type)
-  - For 'ink': {stroke_ids: UUID[]}
-  - For 'text': {text: string, formatting: object}
-  - For 'empty': null
-- width: INTEGER (NOT NULL, column width at time of creation)
-- height: INTEGER (NOT NULL, row height at time of creation)
-- created_at: TIMESTAMPTZ (NOT NULL, default now())
-- updated_at: TIMESTAMPTZ (NOT NULL, default now())
-Indexes:
-- idx_cells_table_id (table_id)
-- idx_cells_table_id_row_col (table_id, row_index, column_index)
-```
-
-### 6. Strokes Table
-Vector stroke data for freehand drawing.
+### 5. Strokes Table
+Vector stroke data for freehand drawing (legacy freeform canvas + ledger workspace).
 
 ```sql
 Table: strokes
 Columns:
 - id: UUID (Primary Key, default uuid_generate_v4())
-- cell_id: UUID (Foreign Key to cells.id, NOT NULL, ON DELETE CASCADE)
-- points: JSONB (NOT NULL, array of point objects: [{x, y, pressure, timestamp, tiltX, tiltY, twist}])
-- tool: TEXT (NOT NULL, e.g., 'pen', 'pencil', 'highlighter')
-- color: TEXT (NOT NULL, hex color)
-- width: FLOAT (NOT NULL, base width)
-- smoothed: BOOLEAN (NOT NULL, default true, whether processed by perfect-freehand)
-- created_at: TIMESTAMPTZ (NOT NULL, default now())
+- cell_id: UUID (nullable, for ledger workspace cell binding)
+- points: JSONB NOT NULL (array of point objects: [{x, y, pressure, timestamp, tiltX, tiltY, twist}])
+- tool: TEXT NOT NULL (e.g., 'pen', 'pencil', 'highlighter')
+- color: TEXT NOT NULL (hex color)
+- width: FLOAT NOT NULL (base width)
+- smoothed: BOOLEAN NOT NULL DEFAULT true
+- created_at: TIMESTAMPTZ DEFAULT NOW()
+
 Indexes:
 - idx_strokes_cell_id (cell_id)
 - idx_strokes_created_at (created_at)
 ```
 
-### 7. Sync Metadata Table
+### 6. Sync Metadata Table
 Tracks synchronization state for offline-first capabilities.
 
 ```sql
@@ -126,25 +112,41 @@ Table: sync_metadata
 Columns:
 - id: UUID (Primary Key, default uuid_generate_v4())
 - user_id: UUID (Foreign Key to users.id, NOT NULL)
-- entity_type: TEXT (NOT NULL, e.g., 'stroke', 'cell', 'table')
-- entity_id: UUID (NOT NULL)
-- version: INTEGER (NOT NULL, starts at 1, increments with each change)
-- operation: TEXT (NOT NULL, enum: 'INSERT', 'UPDATE', 'DELETE')
-- timestamp: TIMESTAMPTZ (NOT NULL, default now())
-- is_synced: BOOLEAN (NOT NULL, default false)
-- conflict_resolved: BOOLEAN (DEFAULT false)
+- entity_type: TEXT NOT NULL (e.g., 'stroke', 'cell', 'table')
+- entity_id: UUID NOT NULL
+- version: INTEGER NOT NULL (starts at 1, increments with each change)
+- operation: TEXT NOT NULL (enum: 'INSERT', 'UPDATE', 'DELETE')
+- timestamp: TIMESTAMPTZ DEFAULT NOW()
+- is_synced: BOOLEAN NOT NULL DEFAULT false
+- conflict_resolved: BOOLEAN DEFAULT false
+
 Indexes:
 - idx_sync_metadata_user_id (user_id)
 - idx_sync_metadata_entity (entity_type, entity_id)
 - idx_sync_metadata_unsynced (user_id, is_synced)
 ```
 
+---
+
+## Migrations Applied
+
+### `20260807000000_add_position_and_update_content_structure.sql`
+- Added `position` column to `pages` table
+- Backfilled position from `page_number`
+- Created index on `(book_id, position)`
+- Created helper function: `create_default_ledger_page(book_id)` — inserts a default ledger page with 4-column grid configuration
+
+### `20260808000000_add_title_to_pages.sql`
+- Added `title` column to `pages` table (nullable)
+
+---
+
 ## Relationships
 - Users 1:M Books (a user can have many books)
 - Books 1:M Pages (a book contains many pages)
 - Pages 1:M Tables (a page can contain many tables)
-- Tables 1:M Cells (a table contains many cells)
-- Cells 1:M Strokes (a cell can contain many stroke groups)
+- Tables 1:M Cells (a table contains many cells) — cells stored in JSONB
+- Strokes 1:1 Cell (via `cell_id` in ledger workspace) — optional for backward compatibility
 
 ## Row-Level Security (RLS)
 All tables have RLS policies enforcing that users can only access their own data:
@@ -164,10 +166,7 @@ All schema changes are managed through Supabase migrations:
 - Tested against staging database before production deployment
 
 ## Extensions
-Planned PostgreSQL extensions:
-- `uuid-ossp` for UUID generation
-- `btree_gin` for indexing JSONB columns
-- `pgcrypto` for cryptographic functions (if needed)
+- `uuid-ossp` for UUID generation (enabled in schema)
 
 ## Backup Strategy
 - Automated daily backups via Supabase
@@ -180,5 +179,6 @@ Planned PostgreSQL extensions:
 - Connection pooling handled by Supabase (PgBouncer)
 
 ## Version
-- Document Version: 1.0.0
-- Last Updated: 2026-07-31
+- Document Version: 2.0.0
+- Last Updated: 2026-08-16
+- **Major change**: Updated to match actual `supabase/schema.sql` + applied migrations

@@ -40,6 +40,11 @@ const mockUseLedgerWorkspace = {
   handlePointerMove: vi.fn(),
   handlePointerUp: vi.fn(),
   handlePointerLeave: vi.fn(),
+  cells: {},
+  calendarPickerCell: null,
+  openCalendarPicker: vi.fn(),
+  closeCalendarPicker: vi.fn(),
+  setCellDate: vi.fn(),
 };
 
 vi.mock('@/hooks/useLedgerWorkspace', () => ({
