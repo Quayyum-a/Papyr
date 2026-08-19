@@ -113,6 +113,30 @@ export function CellContent({
               );
             }
 
+            // Render live "today" date for date columns with no stored value
+            // This handles both brand-new books and existing books that pre-date the date pre-fill feature
+            if (column.type === 'date' && (!cellData || !cellData.value)) {
+              const today = new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
+              return (
+                <div
+                  key={column.id}
+                  className="flex items-center px-2 h-full overflow-hidden"
+                  style={{ width: column.width }}
+                >
+                  <span
+                    className="text-sm text-gray-900 truncate select-none"
+                    style={{ fontFamily: 'Georgia, serif', fontSize: '13px', lineHeight: '1.4' }}
+                  >
+                    {today}
+                  </span>
+                </div>
+              );
+            }
+
             // Empty cell - render nothing
             return <div key={column.id} style={{ width: column.width }} />;
           })}

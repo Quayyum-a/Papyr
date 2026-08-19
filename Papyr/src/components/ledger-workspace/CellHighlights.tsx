@@ -244,7 +244,7 @@ export function CellHighlights({
                   isSelected
                     ? 'pointer-events-none'  // Selected cell - no background color, selection is on canvas layer
                     : 'hover:bg-gray-50/50 pointer-events-auto'  // Very subtle hover
-                } ${isFocused ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+                } ${isFocused && !isSelected ? 'ring-2 ring-blue-500 ring-inset' : isFocused && isSelected ? 'ring-1 ring-blue-300 ring-inset' : ''}`}
                 style={{
                   width: column.width,
                   height: LEDGER_CONSTANTS.ROW_HEIGHT,

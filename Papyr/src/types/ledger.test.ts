@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCellBounds, type LedgerConfig, LEDGER_CONSTANTS } from './ledger';
+import { getCellBounds, createDefaultLedgerPageContent, type LedgerConfig, LEDGER_CONSTANTS } from './ledger';
 
 describe('getCellBounds', () => {
   const testConfig: LedgerConfig = {
@@ -170,5 +170,55 @@ describe('getCellBounds', () => {
       expect(bounds2?.x).toBe(450); // 50 + 400
       expect(bounds2?.width).toBe(150);
     });
+  });
+});
+
+describe('createDefaultLedgerPageContent', () => {
+  it('should return empty cells object (no pre-filled date values)', () => {
+    const content = createDefaultLedgerPageContent();
+
+    expect(content.cells).toBeDefined();
+    expect(Object.keys(content.cells).length).toBe(0);
+  });
+
+  it('should have correct ledger config with column IDs', () => {
+    const content = createDefaultLedgerPageContent();
+
+    expect(content.ledger.columns).toHaveLength(4);
+    expect(content.ledger.columns[0]).toMatchObject({
+      id: 'col-0',
+      label: 'Date',
+      width: 120,
+      position: 0,
+      type: 'date',
+    });
+    expect(content.ledger.columns[1]).toMatchObject({
+      id: 'col-1',
+      label: 'Description',
+      width: 280,
+      position: 1,
+      type: 'text',
+    });
+    expect(content.ledger.columns[2]).toMatchObject({
+      id: 'col-2',
+      label: 'Debit',
+      width: 120,
+      position: 2,
+      type: 'number',
+    });
+    expect(content.ledger.columns[3]).toMatchObject({
+      id: 'col-3',
+      label: 'Credit',
+      width: 120,
+      position: 3,
+      type: 'number',
+    });
+    expect(content.ledger.rowCount).toBe(20);
+  });
+
+  it('should have empty strokes array', () => {
+    const content = createDefaultLedgerPageContent();
+
+    expect(content.strokes).toEqual([]);
   });
 });

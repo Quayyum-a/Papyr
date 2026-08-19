@@ -203,7 +203,8 @@ export interface LedgerRow {
 /**
  * Create default ledger page content
  * Used when creating a new page for a book
- * Initializes Date column cells with the current date
+ * Date columns are rendered with live "today" default in CellContent.tsx
+ * (no pre-filled stored values to avoid staleness)
  */
 export function createDefaultLedgerPageContent(): LedgerPageContent {
   const columns = DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
@@ -211,31 +212,13 @@ export function createDefaultLedgerPageContent(): LedgerPageContent {
     id: `col-${idx}`,
   }));
 
-  // Find Date column(s) and initialize with current date
-  const cells: Record<string, LedgerCellData> = {};
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  columns.forEach((col, colIdx) => {
-    if (col.type === 'date') {
-      // Initialize all rows in this date column with today's date
-      for (let rowIdx = 0; rowIdx < DEFAULT_LEDGER_CONFIG.rowCount; rowIdx++) {
-        const cellId = `col-${colIdx}-row-${rowIdx}`;
-        cells[cellId] = {
-          cellId,
-          value: today,
-          content_type: 'text',
-        };
-      }
-    }
-  });
-
   return {
     strokes: [],
     ledger: {
       columns,
       rowCount: DEFAULT_LEDGER_CONFIG.rowCount,
     },
-    cells,
+    cells: {},
   };
 }
 
