@@ -36,7 +36,7 @@ export default function BookLedgerPage() {
       loadBookAndPage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, bookId]);
+  }, [user?.id, bookId]);
 
   const loadBookAndPage = async () => {
     try {
