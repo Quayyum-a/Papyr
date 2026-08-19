@@ -88,6 +88,14 @@ export function useLedgerWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialContent?.strokes]);
 
+  // Load initial cells when content is provided
+  // This handles the case where initialContent arrives after initial render (e.g., async page load)
+  useEffect(() => {
+    if (initialContent?.cells && Object.keys(initialContent.cells).length > 0) {
+      setCells(initialContent.cells);
+    }
+  }, [initialContent?.cells]);
+
   // Debounced save
   const debouncedSave = useCallback(() => {
     if (!onSave) return;
