@@ -124,7 +124,7 @@ export function CellContent({
               return (
                 <div
                   key={column.id}
-                  className="flex items-center px-2 h-full overflow-hidden"
+                  className="flex items-center px-2 h-full overflow-hidden pointer-events-none"
                   style={{ width: column.width }}
                 >
                   <span
