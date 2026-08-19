@@ -1,3 +1,654 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ==========================================================================
+   Papyr Auth Pages - Custom Design System
+   ========================================================================== */
+
+:root {
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --accent: #0d9488;
+  --accent-soft: rgba(13, 148, 136, 0.10);
+  --bg-right: #fef9e7;
+  --bg-white: #ffffff;
+  --shadow-soft: 0 4px 14px -6px rgba(15, 23, 42, 0.08);
+  --shadow-elevated: 0 24px 60px -22px rgba(15, 23, 42, 0.25), 0 4px 14px -6px rgba(15, 23, 42, 0.08);
+  --shadow-float: 0 16px 34px -16px rgba(15, 23, 42, 0.28);
+}
+
+/* ==========================================================================
+   Keyframe Animations
+   ========================================================================== */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0) rotate(0.001deg); }
+  50% { transform: translateY(-10px) rotate(0.001deg); }
+}
+
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .float,
+  .pill .dot,
+  .btn-spin {
+    animation: none !important;
+  }
+  .chart-line {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .chart-area,
+  .chart-dot {
+    opacity: 1 !important;
+  }
+}
+
+/* ==========================================================================
+   Layout Components
+   ========================================================================== */
+
+.page {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100dvh;
+}
+
+@media (max-width: 920px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+  .right {
+    min-height: auto;
+    padding-top: 56px;
+    padding-bottom: 56px;
+  }
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  padding: 28px clamp(24px, 5vw, 64px);
+  background: var(--bg-white);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.brand-name {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.form-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+.auth-title {
+  font-size: clamp(26px, 3vw, 32px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+
+.auth-sub {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0 0 30px;
+}
+
+.auth-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* ==========================================================================
+   Form Elements
+   ========================================================================== */
+
+.auth-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--bg-white);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.auth-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.auth-input::placeholder {
+  color: #94a3b8;
+}
+
+.auth-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 16px;
+}
+
+.auth-row .auth-label {
+  margin-bottom: 6px;
+}
+
+.auth-row a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.auth-row a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.auth-btn {
+  width: 100%;
+  margin-top: 22px;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  border-radius: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.15s, transform 0.05s;
+}
+
+.auth-btn:active {
+  transform: scale(0.99);
+}
+
+.auth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-btn-primary {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+.auth-btn-google {
+  background: var(--bg-white);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  font-weight: 600;
+  margin-top: 0;
+}
+
+.auth-btn-google:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+/* Button loading/success states */
+.btn-spin {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.auth-btn.busy .btn-spin {
+  display: block;
+}
+
+.auth-btn .btn-ok {
+  display: none;
+}
+
+.auth-btn.ok {
+  background: var(--accent);
+}
+
+.auth-btn.ok .btn-ok {
+  display: block;
+}
+
+.auth-btn.ok .btn-spin {
+  display: none;
+}
+
+.auth-btn.ok .btn-label {
+  display: none;
+}
+
+.auth-btn.busy .btn-label {
+  display: none;
+}
+
+/* ==========================================================================
+   Divider
+   ========================================================================== */
+
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.auth-foot {
+  text-align: center;
+  margin: 26px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.auth-foot a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-foot a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Right Panel - Marketing
+   ========================================================================== */
+
+.right {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(32px, 6vw, 72px);
+  background: var(--bg-right);
+}
+
+/* Gradient blob backgrounds */
+.right::before {
+  content: "";
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  top: -140px;
+  right: -140px;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.16), transparent 65%);
+  pointer-events: none;
+}
+
+.right::after {
+  content: "";
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  bottom: -160px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.15), transparent 65%);
+  pointer-events: none;
+}
+
+/* Dotted pattern overlay */
+.right .dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000, transparent);
+  mask-image: radial-gradient(70% 60% at 50% 45%, #000, transparent);
+  pointer-events: none;
+}
+
+.right-inner {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+}
+
+/* Pill badge */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+.pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.right-inner h2 {
+  font-size: clamp(26px, 3.2vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  margin: 18px 0 10px;
+}
+
+.right-inner h2 em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.right-inner .sub {
+  margin: 0 0 34px;
+  max-width: 440px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* ==========================================================================
+   Dashboard Scene
+   ========================================================================== */
+
+.scene {
+  position: relative;
+  margin-bottom: 88px;
+}
+
+.fx {
+  will-change: transform;
+  transition: transform 0.2s ease-out;
+}
+
+.fx-dash {
+  position: relative;
+  z-index: 2;
+}
+
+.fc-slot-1 {
+  position: absolute;
+  left: 8%;
+  top: 100%;
+  margin-top: -34px;
+  z-index: 1;
+}
+
+.fc-slot-2 {
+  position: absolute;
+  right: 8%;
+  top: 100%;
+  margin-top: -34px;
+  z-index: 1;
+}
+
+.float {
+  animation: floaty 7.5s ease-in-out infinite;
+}
+
+.float.d2 {
+  animation-delay: -3.7s;
+  animation-duration: 9s;
+}
+
+/* Dashboard Card */
+.dash {
+  position: relative;
+  background: var(--bg-white);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 22px;
+  padding: 24px 24px 20px;
+  box-shadow: var(--shadow-elevated);
+}
+
+.dash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.dash-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dash-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.chart-line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw 1.6s 0.35s cubic-bezier(0.3, 0.6, 0.3, 1) forwards;
+}
+
+.chart-area {
+  opacity: 0;
+  animation: fadeIn 0.9s 1.25s ease forwards;
+}
+
+.chart-dot {
+  opacity: 0;
+  animation: fadeIn 0.5s 1.7s ease forwards;
+}
+
+/* Stats */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.stat {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 13px;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.stat-delta {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #059669;
+  background: rgba(5, 150, 105, 0.10);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.stat-delta.down {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* ==========================================================================
+   Floating Cards
+   ========================================================================== */
+
+.float-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--bg-white);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 15px;
+  padding: 12px 15px;
+  box-shadow: var(--shadow-float);
+}
+
+.fc-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fc-icon.check {
+  background: rgba(5, 150, 105, 0.12);
+  color: #059669;
+}
+
+.fc-icon.tag {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.fc-main {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.fc-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Trust Section
+   ========================================================================== */
+
+.trust {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 2px;
+}
+
+.avatars {
+  display: flex;
+}
+
+.avatars span {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-right);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  margin-left: -8px;
+}
+
+.avatars span:first-child {
+  margin-left: 0;
+}
+
+.trust-text {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.trust-text strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 3px;
+}
+
+.stars svg {
+  width: 12px;
+  height: 12px;
+}

@@ -241,7 +241,9 @@ export function CellHighlights({
                 key={column.id}
                 ref={(el) => { if (el) cellRefsRef.current.set(cellKey, el); }}
                 className={`relative cursor-pointer transition-all duration-100 ease-out ${
-                  isSelected ? 'bg-yellow-50 pointer-events-none' : 'hover:bg-gray-50 pointer-events-auto'
+                  isSelected
+                    ? 'pointer-events-none'  // Selected cell - no background color, selection is on canvas layer
+                    : 'hover:bg-gray-50/50 pointer-events-auto'  // Very subtle hover
                 } ${isFocused ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
                 style={{
                   width: column.width,
@@ -257,18 +259,6 @@ export function CellHighlights({
                 aria-colindex={columnIndex + 1}
                 aria-rowindex={rowIndex + 1}
               >
-                {/* Selected cell highlight with smooth transition */}
-                {isSelected && (
-                  <div
-                    className="absolute inset-0 pointer-events-none transition-opacity duration-100"
-                    style={{
-                      backgroundColor: LEDGER_CONSTANTS.CELL_HIGHLIGHT_COLOR,
-                      opacity: LEDGER_CONSTANTS.CELL_HIGHLIGHT_OPACITY,
-                    }}
-                    aria-hidden="true"
-                  />
-                )}
-                
                 {/* Recognition indicator */}
                 {isRecognizing && (
                   <div

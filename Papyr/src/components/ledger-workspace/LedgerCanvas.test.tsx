@@ -19,6 +19,8 @@ const mockGetContext = vi.fn(() => ({
   moveTo: vi.fn(),
   lineTo: vi.fn(),
   stroke: vi.fn(),
+  strokeRect: vi.fn(),
+  setLineDash: vi.fn(),
   drawImage: vi.fn(),
   imageSmoothingEnabled: true,
   imageSmoothingQuality: 'high',
@@ -59,7 +61,7 @@ describe('LedgerCanvas', () => {
     vi.clearAllMocks();
   });
 
-  it('should render three canvas elements', () => {
+  it('should render four canvas elements', () => {
     const { container } = render(
       <LedgerCanvas
         ledgerConfig={mockLedgerConfig}
@@ -72,7 +74,7 @@ describe('LedgerCanvas', () => {
     );
 
     const canvases = container.querySelectorAll('canvas');
-    expect(canvases).toHaveLength(3);
+    expect(canvases).toHaveLength(4);
   });
 
   it('should apply correct z-index to layers', () => {
@@ -90,10 +92,11 @@ describe('LedgerCanvas', () => {
     const canvases = container.querySelectorAll('canvas');
     expect(canvases[0]).toHaveStyle({ zIndex: '1' }); // Paper
     expect(canvases[1]).toHaveStyle({ zIndex: '1' }); // Grid
-    expect(canvases[2]).toHaveStyle({ zIndex: '2' }); // Ink
+    expect(canvases[2]).toHaveStyle({ zIndex: '1.5' }); // Selection (between grid and ink)
+    expect(canvases[3]).toHaveStyle({ zIndex: '2' }); // Ink
   });
 
-  it('should disable pointer events on ink layer', () => {
+  it('should disable pointer events on selection and ink layers', () => {
     const { container } = render(
       <LedgerCanvas
         ledgerConfig={mockLedgerConfig}
@@ -105,11 +108,12 @@ describe('LedgerCanvas', () => {
       />
     );
 
-    const inkCanvas = container.querySelectorAll('canvas')[2];
-    expect(inkCanvas).toHaveClass('pointer-events-none');
+    const canvases = container.querySelectorAll('canvas');
+    expect(canvases[2]).toHaveClass('pointer-events-none'); // Selection
+    expect(canvases[3]).toHaveClass('pointer-events-none'); // Ink
   });
 
-  it('should set touchAction to none to prevent default behaviors', () => {
+  it('should set touchAction to auto when no cell is selected', () => {
     const { container } = render(
       <LedgerCanvas
         ledgerConfig={mockLedgerConfig}
@@ -118,6 +122,22 @@ describe('LedgerCanvas', () => {
         currentPenSize="medium"
         currentColor="#000000"
         selectedCell={null}
+      />
+    );
+
+    const wrapper = container.firstChild as HTMLElement;
+    expect(wrapper).toHaveStyle({ touchAction: 'auto' });
+  });
+
+  it('should set touchAction to none when a cell is selected', () => {
+    const { container } = render(
+      <LedgerCanvas
+        ledgerConfig={mockLedgerConfig}
+        strokes={mockStrokes}
+        currentStroke={null}
+        currentPenSize="medium"
+        currentColor="#000000"
+        selectedCell={{ columnIndex: 0, rowIndex: 0 }}
       />
     );
 
@@ -176,8 +196,8 @@ describe('LedgerCanvas', () => {
       />
     );
 
-    // Should request 2D context for each canvas (3 visible + 1 offscreen)
+    // Should request 2D context for each canvas (4 visible + 1 offscreen)
     expect(mockGetContext).toHaveBeenCalledWith('2d');
-    expect(mockGetContext).toHaveBeenCalledTimes(4);
+    expect(mockGetContext).toHaveBeenCalledTimes(5);
   });
 });

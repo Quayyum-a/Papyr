@@ -349,7 +349,114 @@ Future decisions should follow this format:
 
 ---
 
+---
+
+### 16. Ink Engine Architecture: Cell-Bound Ledger Workspace (Supersedes Original Freeform Canvas Design)
+**Decision**: Replace the original standalone freeform canvas engine with a cell-bound ledger workspace ink system where strokes are bound to specific ledger cells within a grid.
+
+**Context**: 
+- Original architecture (documented in INK_ENGINE_ARCHITECTURE.md) designed a freeform canvas for general note-taking
+- Product pivot: Papyr is a ledger for small businesses, not a general note-taking app
+- The ledger workspace requires strokes to be associated with specific cells (row/column) for structured data entry
+- Need to maintain backward compatibility with existing freeform canvas page
+
+**Alternatives Considered**:
+- Keep freeform canvas and add grid overlay: Would not provide true cell binding
+- Separate ink engines for freeform and ledger: Code duplication, maintenance burden
+- Modify existing engine to support both modes: Preferred approach
+
+**Outcome**: 
+- Extended `Stroke` interface with optional `cell_id` field for backward compatibility
+- Created three-layer canvas system: PaperLayer (paper texture), GridLayer (row/column lines), InkLayer (strokes)
+- Added HTML overlay components: ColumnHeaders (editable), CellHighlights (selection), useCellSelection hook
+- Reused existing premium ink engine (quadratic bezier tapering, velocity-based pressure) for stroke rendering
+- Ledger workspace route: `/dashboard/books/[id]/ledger` (separate from freeform canvas)
+- Default 4-column ledger configuration with dynamic column management
+
+**Status**: Accepted
+**Date**: 2026-08-07
+**Amends**: Original freeform canvas architecture (INK_ENGINE_ARCHITECTURE.md)
+**Tags**: architecture, drawing, ledger, ink
+
+---
+
+### 17. Handwriting Recognition: OpenRouter Vision Models (Not Google Cloud Vision)
+**Decision**: Use OpenRouter API with vision-capable models for handwriting recognition instead of Google Cloud Vision API.
+
+**Context**: 
+- Google Cloud Vision approach was implemented but abandoned due to setup complexity (service accounts, ADC, billing setup)
+- OpenRouter provides access to multiple vision models (GPT-4V, Claude 3 Opus, etc.) via single API
+- Simpler authentication (single API key)
+- More cost-effective for variable usage patterns
+- Better model selection for handwriting specifically
+
+**Alternatives Considered**:
+- Google Cloud Vision: Mature OCR but complex setup and per-request pricing
+- AWS Textract: Similar complexity to Google Cloud Vision
+- Azure Form Recognizer: Enterprise-focused, complex setup
+- Local/on-device models: Not yet accurate enough for handwriting
+- Tesseract OCR: Poor handwriting recognition accuracy
+
+**Outcome**: 
+- Will implement `/api/ink/recognize-openrouter` route
+- Use `OPENROUTER_API_KEY` and `OPENROUTER_VISION_MODELS` environment variables
+- Support multiple vision models for comparison/fallback
+- Remove `@google-cloud/vision` dependency (completed 2026-08-16)
+
+**Status**: Accepted
+**Date**: 2026-08-16
+**Amends**: Google Cloud Vision approach (deleted docs: GOOGLE_CLOUD_VISION_SETUP.md, GOOGLE_CLOUD_ADC_SETUP.md, etc.)
+**Tags**: architecture, handwriting, recognition, api
+
+---
+
+### 18. Book Cover Themes: Fixed Palette with Serif Display Typography
+**Decision**: Use 8 predefined cover themes with serif display face for titles, replacing dynamic color construction that caused rendering bugs.
+
+**Context**: 
+- Original book creation page used dynamic Tailwind class construction (`bg-[{themeColor}]`) which doesn't work at build time
+- Resulted in blank white preview boxes shipped to production
+- Brand colors are slate-900 (primary) and teal-600 (accent) — not indigo/blue
+
+**Alternatives Considered**:
+- Dynamic color generation with CSS custom properties: Works but adds complexity
+- Fixed theme palette with inline styles for dynamic values: Chosen approach
+- User-uploaded cover images: Out of scope for MVP
+
+**Outcome**: 
+- 8 predefined themes: Graphite, Midnight, Forest, Terracotta, Ocean, Amber, Sage, Cream
+- Each theme has `color` (cover surface hex) and `accent` (list view accent)
+- Live preview uses `style={{ backgroundColor: theme.color }}` for dynamic rendering
+- Serif font (`font-serif`) for cover title, matching paper notebook aesthetic
+- Database schema: `cover_theme` (TEXT) and `cover_color` (TEXT) columns added to `books` table
+
+**Status**: Accepted
+**Date**: 2026-08-09
+**Tags**: frontend, design, books, themes
+
+---
+
+### 19. Authentication: Email Verification with Production Callback Fix
+**Decision**: Implement Supabase Auth email verification with custom callback route and production URL detection.
+
+**Context**: 
+- Initial implementation had email verification redirecting to localhost
+- Required `/auth/callback` route to exchange code for session
+- Needed environment-aware URL detection for dev/staging/production
+
+**Outcome**: 
+- Created `/auth/callback/route.ts` for server-side code exchange
+- Added URL detection utility (`getAppUrl()`) for environment-aware redirects
+- Configured custom email templates in Supabase with Papyr branding
+- Fixed signup flow: email verification now works correctly in production
+
+**Status**: Accepted
+**Date**: 2026-08-09
+**Tags**: auth, security, deployment
+
+---
+
 ## Document Metadata
 - Document Version: 1.0.0
-- Last Updated: 2026-07-31
+- Last Updated: 2026-08-16
 - Status: Active

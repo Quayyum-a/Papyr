@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { LedgerCanvas } from '@/components/ledger-workspace/LedgerCanvas';
 import { ColumnHeaders } from '@/components/ledger-workspace/ColumnHeaders';
 import { CellHighlights } from '@/components/ledger-workspace/CellHighlights';
+import { CellContent } from '@/components/ledger-workspace/CellContent';
+import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
+import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
-import type { LedgerPageContent } from '@/types/ledger';
+import type { LedgerPageContent, CellCoordinates } from '@/types/ledger';
+import { getLedgerContentDimensions } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
 
 interface LedgerWorkspaceProps {
@@ -27,6 +31,9 @@ export function LedgerWorkspace({
   initialContent,
   className = '',
 }: LedgerWorkspaceProps) {
+  // Ref for scrollable container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const {
     // Ink engine
     strokes,
@@ -60,6 +67,15 @@ export function LedgerWorkspace({
     // Recognition state
     recognizingCells,
     inkCanvasRef,
+
+    // Cell data
+    cells,
+
+    // Calendar picker
+    calendarPickerCell,
+    openCalendarPicker,
+    closeCalendarPicker,
+    setCellDate,
 
     // Pointer handlers
     handlePointerDown,
@@ -120,6 +136,9 @@ export function LedgerWorkspace({
     // Arrow keys: Cell navigation (handled by CellHighlights)
   }, [canUndo, canRedo, undo, redo, selectedCell, clearSelection]);
 
+  // Compute ledger content dimensions from config
+  const contentDimensions = getLedgerContentDimensions(ledgerConfig);
+
   // Register keyboard shortcuts
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -128,98 +147,42 @@ export function LedgerWorkspace({
 
   return (
     <div className={`relative w-full h-full ${className}`} role="application" aria-label="Ledger workspace">
-      {/* Toolbar - Vertical on right side, floating */}
+      {/* Responsive Toolbar */}
+      <LedgerToolbar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        currentPenSize={currentPenSize}
+        currentColor={currentColor}
+        onPenSizeChange={setPenSize}
+        onColorChange={setPenColor}
+        strokeCount={strokes.length}
+        columnCount={ledgerConfig.columns.length}
+        selectedCell={selectedCell}
+        isSaving={isSaving}
+      />
+
+      {/* Scrollable Ledger Workspace */}
       <div
-        className="absolute top-0 right-0 h-full z-10 bg-white/90 backdrop-blur-sm shadow-lg px-3 py-4 flex flex-col items-center gap-4"
-        role="toolbar"
-        aria-label="Ledger toolbar"
-        style={{ width: '80px' }}
+        ref={scrollContainerRef}
+        className="relative w-full min-h-full overflow-auto md:pr-20"
       >
-        <div className="flex flex-col gap-2" role="group" aria-label="History">
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full aspect-square flex items-center justify-center"
-            aria-label="Undo (Ctrl+Z)"
-            aria-disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
-          >
-            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-          </button>
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full aspect-square flex items-center justify-center"
-            aria-label="Redo (Ctrl+Shift+Z)"
-            aria-disabled={!canRedo}
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
-
-        <div className="flex flex-col items-center gap-2 w-full" role="group" aria-label="Pen settings">
-          <label htmlFor="pen-size" className="text-xs text-gray-500 font-medium">Pen</label>
-          <select
-            id="pen-size"
-            value={currentPenSize}
-            onChange={e => setPenSize(e.target.value as any)}
-            className="px-1 py-2 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-center"
-            aria-label="Pen size"
-          >
-            <option value="extra-fine">XFine</option>
-            <option value="fine">Fine</option>
-            <option value="medium">Med</option>
-            <option value="bold">Bold</option>
-            <option value="marker">Mark</option>
-          </select>
-        </div>
-
-        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
-
-        <div className="flex flex-col items-center gap-2 w-full" role="group" aria-label="Color picker">
-          <label htmlFor="pen-color" className="text-xs text-gray-500 font-medium">Color</label>
-          <input
-            id="pen-color"
-            type="color"
-            value={currentColor}
-            onChange={e => setPenColor(e.target.value)}
-            className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-            aria-label="Pen color"
-            title="Pen color"
-          />
-        </div>
-
-        <div className="h-px w-full bg-gray-300" aria-hidden="true" />
-
-        <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-auto text-center" aria-live="polite" aria-atomic="true">
-          <span className="font-medium">{strokes.length}</span>
-          <span className="text-[10px] leading-tight">strokes</span>
-          <span className="font-medium mt-1">{ledgerConfig.columns.length}</span>
-          <span className="text-[10px] leading-tight">columns</span>
-          {selectedCell && (
-            <>
-              <span className="text-blue-600 font-medium mt-2" aria-label={`Selected cell: column ${selectedCell.columnIndex + 1}, row ${selectedCell.rowIndex + 1}`}>
-                {selectedCell.columnIndex + 1},{selectedCell.rowIndex + 1}
-              </span>
-            </>
-          )}
-          {isSaving && <span className="text-yellow-600 mt-2" aria-label="Saving changes">Saving…</span>}
-        </div>
-      </div>
-
-      {/* Ledger Workspace */}
-      <div className="relative w-full h-full">
+        {/*
+          Content wrapper with min-width 100% and width max-content to ensure
+          it fills the viewport horizontally while allowing horizontal scroll
+          when ledger content is wider than viewport. Height is fixed to ledger
+          content height to prevent vertical stretching.
+        */}
         <div
-          className="absolute inset-0 border border-gray-300 rounded-lg overflow-hidden bg-white"
+          className="relative border border-gray-300 rounded-lg bg-white"
           role="region"
           aria-label="Ledger grid"
+          style={{
+            minWidth: '100%',
+            width: 'max-content',
+            height: `${contentDimensions.height}px`,
+          }}
         >
           {/* Canvas layers */}
           <LedgerCanvas
@@ -231,10 +194,20 @@ export function LedgerWorkspace({
             selectedCell={selectedCell}
             inkCanvasRef={inkCanvasRef}
             recognizingCells={recognizingCells}
+            scrollContainerRef={scrollContainerRef}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerLeave}
+            cells={cells}
+          />
+
+          {/* Cell content overlay - recognized text and failed recognition indicators */}
+          <CellContent
+            ledgerConfig={ledgerConfig}
+            cells={cells}
+            selectedCell={selectedCell}
+            recognizingCells={recognizingCells}
           />
 
           {/* Overlay layers */}
@@ -249,8 +222,35 @@ export function LedgerWorkspace({
             ledgerConfig={ledgerConfig}
             selectedCell={selectedCell}
             recognizingCells={recognizingCells}
-            onCellSelect={selectCell}
+            onCellSelect={(coords) => {
+              if (coords) {
+                // Check if this is a date column and open calendar picker
+                const column = ledgerConfig.columns[coords.columnIndex];
+                if (column?.type === 'date') {
+                  openCalendarPicker(coords.columnIndex, coords.rowIndex);
+                } else {
+                  selectCell(coords);
+                }
+              } else {
+                selectCell(null);
+              }
+            }}
           />
+
+          {/* Calendar Picker for date cells */}
+          {calendarPickerCell && (
+            <CalendarPicker
+              ledgerConfig={ledgerConfig}
+              selectedCell={{
+                columnIndex: calendarPickerCell.columnIndex,
+                rowIndex: calendarPickerCell.rowIndex,
+              }}
+              cells={cells}
+              onDateSelect={setCellDate}
+              onClose={closeCalendarPicker}
+              scrollContainerRef={scrollContainerRef}
+            />
+          )}
         </div>
       </div>
 

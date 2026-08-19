@@ -41,7 +41,7 @@ export default function LandingPage() {
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight mb-4">
               Your traditional ledger, evolved into a digital handwritten record.
             </h2>
-            <p className="text-lg text-gray-600 leading-relaxed">
+            <p className="text-xl text-gray-600 leading-relaxed">
               Papyr provides a secure, structured digital canvas for small businesses to manage books, pages, and handwritten ink with precision, speed, and seamless background sync. Built for focus and clarity.
             </p>
           </div>

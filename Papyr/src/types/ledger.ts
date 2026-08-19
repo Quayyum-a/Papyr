@@ -6,20 +6,28 @@
  */
 
 /**
+ * Column type for special behavior (e.g., date picker)
+ */
+export type LedgerColumnType = 'text' | 'number' | 'date';
+
+/**
  * Represents a single column in the ledger
  */
 export interface LedgerColumn {
   /** Unique identifier for the column */
   id: string;
-  
+
   /** Display label for the column header */
   label: string;
-  
+
   /** Width of the column in pixels */
   width: number;
-  
+
   /** Position index of the column (0-based, left to right) */
   position: number;
+
+  /** Column type for special behavior (default: 'text') */
+  type?: LedgerColumnType;
 }
 
 /**
@@ -45,6 +53,20 @@ export interface CellCoordinates {
 }
 
 /**
+ * Cell data for a single cell in the ledger
+ */
+export interface LedgerCellData {
+  /** Cell identifier (format: "col-{columnIndex}-row-{rowIndex}") */
+  cellId: string;
+  
+  /** Display value for the cell (recognized text or typed text) */
+  value: string;
+  
+  /** Type of content in the cell */
+  content_type: 'empty' | 'text' | 'number' | 'ink';
+}
+
+/**
  * Complete page content structure for ledger pages
  * Stored in pages.content JSONB field in database
  */
@@ -54,6 +76,9 @@ export interface LedgerPageContent {
   
   /** Ledger grid configuration */
   ledger: LedgerConfig;
+  
+  /** Cell data (recognized text, typed values, etc.) - keyed by cellId */
+  cells?: Record<string, LedgerCellData>;
 }
 
 /**
@@ -103,14 +128,14 @@ export function parseCellId(cell_id: string | null | undefined): CellCoordinates
 /**
  * Default ledger configuration (4 columns: Date, Description, Debit, Credit)
  */
-export const DEFAULT_LEDGER_CONFIG: Omit<LedgerConfig, 'columns'> & { 
-  columns: Omit<LedgerColumn, 'id'>[] 
+export const DEFAULT_LEDGER_CONFIG: Omit<LedgerConfig, 'columns'> & {
+  columns: Omit<LedgerColumn, 'id'>[]
 } = {
   columns: [
-    { label: 'Date', width: 120, position: 0 },
-    { label: 'Description', width: 280, position: 1 },
-    { label: 'Debit', width: 120, position: 2 },
-    { label: 'Credit', width: 120, position: 3 },
+    { label: 'Date', width: 120, position: 0, type: 'date' },
+    { label: 'Description', width: 280, position: 1, type: 'text' },
+    { label: 'Debit', width: 120, position: 2, type: 'number' },
+    { label: 'Credit', width: 120, position: 3, type: 'number' },
   ],
   rowCount: 20,
 };
@@ -178,17 +203,39 @@ export interface LedgerRow {
 /**
  * Create default ledger page content
  * Used when creating a new page for a book
+ * Initializes Date column cells with the current date
  */
 export function createDefaultLedgerPageContent(): LedgerPageContent {
+  const columns = DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
+    ...col,
+    id: `col-${idx}`,
+  }));
+
+  // Find Date column(s) and initialize with current date
+  const cells: Record<string, LedgerCellData> = {};
+  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  columns.forEach((col, colIdx) => {
+    if (col.type === 'date') {
+      // Initialize all rows in this date column with today's date
+      for (let rowIdx = 0; rowIdx < DEFAULT_LEDGER_CONFIG.rowCount; rowIdx++) {
+        const cellId = `col-${colIdx}-row-${rowIdx}`;
+        cells[cellId] = {
+          cellId,
+          value: today,
+          content_type: 'text',
+        };
+      }
+    }
+  });
+
   return {
     strokes: [],
     ledger: {
-      columns: DEFAULT_LEDGER_CONFIG.columns.map((col, idx) => ({
-        ...col,
-        id: `col-${idx}`,
-      })),
+      columns,
       rowCount: DEFAULT_LEDGER_CONFIG.rowCount,
     },
+    cells,
   };
 }
 
@@ -229,4 +276,90 @@ export function getCellBounds(
     width: column.width,
     height: LEDGER_CONSTANTS.ROW_HEIGHT,
   };
+}
+
+/**
+ * Constants for expanded cell bounds (active cell writing zone)
+ */
+export const EXPANDED_CELL_CONSTANTS = {
+  /** Minimum comfortable width for natural handwriting (pixels) */
+  MIN_WRITING_WIDTH: 200,
+  
+  /** Vertical expansion above cell (half row height) */
+  VERTICAL_EXPANSION_ABOVE: LEDGER_CONSTANTS.ROW_HEIGHT / 2,
+  
+  /** Vertical expansion below cell (half row height) */
+  VERTICAL_EXPANSION_BELOW: LEDGER_CONSTANTS.ROW_HEIGHT / 2,
+  
+  /** Background tint color for expanded zone */
+  EXPANDED_ZONE_COLOR: '#FFF4CC',
+  
+  /** Opacity for expanded zone background */
+  EXPANDED_ZONE_OPACITY: 0.3,
+} as const;
+
+/**
+ * Compute expanded bounds for an active cell's writing zone
+ * Provides more room for natural handwriting: extends vertically and ensures minimum width
+ *
+ * @param ledgerConfig - The ledger configuration with columns
+ * @param columnIndex - Column index (0-based)
+ * @param rowIndex - Row index (0-based)
+ * @returns Expanded bounds object, or null if cell is invalid
+ */
+export function getExpandedCellBounds(
+  ledgerConfig: LedgerConfig,
+  columnIndex: number,
+  rowIndex: number
+): { x: number; y: number; width: number; height: number } | null {
+  const baseBounds = getCellBounds(ledgerConfig, columnIndex, rowIndex);
+
+  if (!baseBounds) {
+    return null;
+  }
+
+  // Expand vertically (half row height above and below)
+  const expandedHeight =
+    baseBounds.height +
+    EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_ABOVE +
+    EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_BELOW;
+
+  const expandedY = baseBounds.y - EXPANDED_CELL_CONSTANTS.VERTICAL_EXPANSION_ABOVE;
+
+  // Ensure minimum comfortable width for writing
+  let expandedWidth = baseBounds.width;
+  let expandedX = baseBounds.x;
+
+  if (baseBounds.width < EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH) {
+    // Expand horizontally, centered on the cell
+    const widthDiff = EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH - baseBounds.width;
+    expandedWidth = EXPANDED_CELL_CONSTANTS.MIN_WRITING_WIDTH;
+    expandedX = baseBounds.x - widthDiff / 2;
+  }
+
+  return {
+    x: expandedX,
+    y: expandedY,
+    width: expandedWidth,
+    height: expandedHeight,
+  };
+}
+
+/**
+ * Compute the total content dimensions of the ledger
+ * This gives the exact size the ledger content should be, derived entirely from config
+ *
+ * @param ledgerConfig - The ledger configuration with columns and row count
+ * @returns Object with total width and height in pixels
+ */
+export function getLedgerContentDimensions(
+  ledgerConfig: LedgerConfig
+): { width: number; height: number } {
+  // Total width = sum of all column widths
+  const totalWidth = ledgerConfig.columns.reduce((sum, col) => sum + col.width, 0);
+
+  // Total height = header height + (row count * row height)
+  const totalHeight = LEDGER_CONSTANTS.HEADER_HEIGHT + ledgerConfig.rowCount * LEDGER_CONSTANTS.ROW_HEIGHT;
+
+  return { width: totalWidth, height: totalHeight };
 }

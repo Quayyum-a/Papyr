@@ -333,7 +333,8 @@ describe('POST /api/ink/recognize', () => {
       expect(data.model).toBe('model-2:free');
     });
 
-    it('should handle empty string response as valid result', async () => {
+    it('should treat empty string as failure and try next model', async () => {
+      // First model returns empty string
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -341,6 +342,20 @@ describe('POST /api/ink/recognize', () => {
             {
               message: {
                 content: '',
+              },
+            },
+          ],
+        }),
+      });
+
+      // Second model succeeds
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: 'Non-empty text',
               },
             },
           ],
@@ -358,9 +373,9 @@ describe('POST /api/ink/recognize', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.text).toBe('');
-      expect(data.model).toBe('model-1:free');
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(data.text).toBe('Non-empty text');
+      expect(data.model).toBe('model-2:free');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('should not stop trying models if response has no choices array', async () => {

@@ -1,131 +1,129 @@
 # PROJECT CONTEXT
 
 ## Current Sprint
-Sprint 0 - Drawing Engine Validation
+Sprint 2 (P301): Ledger Workspace & Handwriting Recognition — IN PROGRESS
 
 ## Current Milestone
-Drawing Engine MVP - Core canvas functionality with perfect-freehand integration
+Ledger workspace core functional; handwriting recognition (OpenRouter) and mobile ledger rendering are open work.
 
-## Completed Tasks
+## Completed Sprints
 
-### Sprint 0 Tasks
-- [x] Set up project repository structure
-- [x] Initialize documentation framework
-- [x] Create project README.md
-- [x] Establish development environment
-- [x] Configure Supabase connection
-- [x] Implement basic canvas rendering with perfect-freehand integration
-- [x] Create stroke data model
-- [x] Implement basic undo/redo functionality
-- [x] Add pressure sensitivity support
+### Sprint 0: Drawing Engine Validation ✅ (2026-08-01)
+- Premium ink engine with quadratic bezier tapering
+- Velocity-based pressure simulation
+- Zero-latency rendering (<16ms) via requestAnimationFrame
+- Offscreen canvas compositing
+- Multiple pen sizes, natural stroke caps/joins
+- Mobile responsive, no scroll
 
-## Remaining Tasks
+### Sprint 1: Authentication & Foundation ✅ (2026-08-09)
+- Supabase Auth (email/password, OAuth, email verification)
+- `/auth/callback` route with production URL detection
+- Custom branded email templates
+- Book CRUD with 8 cover themes (Graphite, Midnight, Forest, Terracotta, Ocean, Amber, Sage, Cream)
+- Page management within books
+- Dashboard with book shelf view
+- Profile page with display name editing
+- Fixed: signup email verification redirect (was pointing to localhost)
 
-### Sprint 0 Tasks
-- [ ] Test on low-end Android devices
+### Sprint 2 (P301): Ledger Workspace — IN PROGRESS 🚧 (Started 2026-08-07)
+- Three-layer canvas system (PaperLayer, GridLayer, InkLayer)
+- Cell-bound ink strokes with `cell_id` field
+- Editable column headers, cell selection/highlights
+- Column management (add/remove/reorder)
+- Route: `/dashboard/books/[id]/ledger`
+- Supabase integration (load/save pages, debounced save)
+- **Open regression**: canvas renders 0×0 on initial load
+- **Not yet implemented**: OpenRouter handwriting recognition (`/api/ink/recognize-openrouter`)
+- **Not yet implemented**: recognized text persistence to cells
 
 ## Architecture Summary
 
 **Drawing Engine Core**
-- Canvas-based rendering system
-- Vector stroke storage
-- Perfect-freehand integration
-- Pressure sensitivity support
-- Performance optimization for mobile
+- Canvas2D + custom stroke engine (production-ready)
+- Quadratic bezier tapering, Catmull-Rom smoothing
+- Velocity-based pressure simulation
+- RequestAnimationFrame render loop (16ms latency)
+- Offscreen canvas compositing
 
 **Data Layer**
-- Supabase PostgreSQL for metadata
-- Local storage for stroke data
-- Offline-first sync capability
+- Supabase PostgreSQL (normalized schema + JSONB for strokes/cells)
+- Row-Level Security on all tables
+- Offline-first via IndexedDB + background sync (planned)
+
+**Auth Layer**
+- Supabase Auth (email/password, Google OAuth)
+- Email verification via `/auth/callback`
+- Session management with refresh tokens
 
 **UI Layer**
-- Next.js App Router
-- TypeScript with TailwindCSS
-- shadcn/ui components
-- Canvas-based drawing surface
+- Next.js 14 App Router, TypeScript, TailwindCSS
+- shadcn/ui + Radix UI primitives
+- Brand tokens: slate-900 (primary), teal-600 (accent), amber-50 (warm surface)
+- Rounded-full inputs/buttons, rounded-2xl cards
+- Serif display face for book covers (`font-serif`)
 
-## Folder Structure
-```
-/docs/
-├── requirements/
-├── architecture/
-├── database/
-├── api/
-├── design/
-├── decisions/
-├── tasks/
-├── progress/
-├── qa/
-├── deployment/
-├── changelog/
-└── prompts/
-```
+## Current Database Schema (from `supabase/schema.sql` + migrations)
 
-## Current Database Schema
+| Table | Purpose |
+|-------|---------|
+| `profiles` | User profiles (extends auth.users) |
+| `books` | Ledger notebooks (title, cover_theme, cover_color) |
+| `pages` | Pages within books (page_number, content JSONB) |
+| `tables` | Grids on pages (rows, columns, cells JSONB) |
+| `cells` | Individual cells with content_type ('ink'|'text'|'empty') |
 
-### Tables
-- `books` - Digital ledger books
-- `pages` - Pages within books
-- `tables` - Tables on pages
-- `strokes` - Vector stroke data
-- `cells` - Individual cell data
-- `users` - User accounts
-
-### RLS Policies
-- Row-level access control enforced
-- Users can only access their own data
-- Book ownership enforced via foreign keys
+Migrations applied:
+- `20260807000000_add_position_and_update_content_structure.sql` — position column, ledger page helper
+- `20260808000000_add_title_to_pages.sql` — title field on pages
 
 ## Current API Routes
 
-### Core Endpoints
-- `GET /api/books` - List user books
-- `POST /api/books` - Create new book
-- `GET /api/books/{id}` - Get specific book
-- `PUT /api/books/{id}` - Update book
-- `DELETE /api/books/{id}` - Delete book
+| Route | Purpose |
+|-------|---------|
+| `/api/auth/session` | Current session user |
+| `/api/books` | Book CRUD |
+| `/api/pages` | Page CRUD |
+| `/api/tables` | Table CRUD |
+| `/api/cells` | Cell content CRUD |
+| `/api/strokes` | Stroke CRUD (cell-bound) |
+| `/api/export/[type]` | Export (png, json, svg) |
+| `/api/health` | Health check |
+| `/api/config` | Public config |
+| `/auth/callback` | Supabase email verification |
 
-### Drawing Engine Endpoints
-- `POST /api/strokes` - Save stroke data
-- `GET /api/strokes/{id}` - Retrieve stroke
-- `DELETE /api/strokes/{id}` - Delete stroke
-- `GET /api/exports/{id}` - Export strokes
+## Known Open Issues
+1. **Ledger canvas zero-dimension regression** — canvas renders 0×0 on initial load
+2. **Handwriting recognition not implemented** — OpenRouter route needed
+3. **Recognized text storage gap** — need to persist OCR results to cell content
+4. **Mobile ledger rendering** — canvas sizing issues on mobile viewport
+5. **Low-end device performance** — Sprint 0 carryover (KI-001)
 
-## Current Components
-
-### UI Components
-- `BookShelf` - Main book navigation
-- `BookView` - Individual book interface
-- `PageFlip` - Page navigation
-- `CellCanvas` - Drawing surface
-- `Toolbar` - Drawing tools
-
-### Drawing Components
-- `StrokeRenderer` - Vector stroke rendering
-- `FreehandDrawer` - Input handling
-- `GestureHandler` - Touch/mouse events
-
-## Known Issues
-
-1. **Priority**: Drawing engine performance on low-end Android devices
-   - Impact: Battery drain, laggy input
-   - Status: Investigating
-
-2. **Pressure sensitivity across different devices**
-   - Impact: Inconsistent user experience
-   - Status: Implementation completed (basic implementation, needs refinement for different devices)
-
-3. **Priority**: Offline sync conflict resolution
-   - Impact: Data integrity
-   - Status: Design phase
-
-## Next Task
-Test on low-end Android devices
+## Folder Structure
+```
+/src
+├── app/
+│   ├── api/              # API routes
+│   ├── auth/             # Auth pages (login, signup, callback)
+│   ├── dashboard/        # Dashboard pages (books, ledger)
+│   └── page.tsx          # Freeform canvas (legacy)
+├── components/
+│   ├── ledger-workspace/ # Ledger canvas + overlay components
+│   ├── ui/               # shadcn/ui components
+│   └── auth/             # Auth forms
+├── hooks/                # Custom React hooks
+├── lib/                  # Utilities (ink-engine, supabase, etc.)
+└── types/                # TypeScript definitions
+```
 
 ## Current Branch
-main
+`feature/p301-ledger-workspace-handwriting-canvas`
 
-## Current Deployment Status
-- Staging: Ready for deployment
-- Production: Not yet deployed
-- Environment: Development
+## Deployment Status
+- **Production**: https://papyr-app-mu.vercel.app (Vercel)
+- **Staging**: Auto-deploy on main branch push
+- **Root Directory**: `Papyr` in Vercel settings
+
+---
+
+*Last Updated: 2026-08-16*

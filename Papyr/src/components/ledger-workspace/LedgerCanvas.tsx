@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useLedgerCanvas } from './useLedgerCanvas';
 import { PaperLayer } from './PaperLayer';
 import { GridLayer } from './GridLayer';
+import { SelectionLayer } from './SelectionLayer';
 import { InkLayer } from './InkLayer';
 import type { LedgerConfig, CellCoordinates } from '@/types/ledger';
 import type { Stroke, RawPoint, PenSize } from '@/lib/ink-engine/types';
@@ -17,22 +18,26 @@ interface LedgerCanvasProps {
   selectedCell: CellCoordinates | null;
   inkCanvasRef?: React.RefObject<HTMLCanvasElement>;
   recognizingCells?: Set<string>;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerLeave?: (e: React.PointerEvent<HTMLDivElement>) => void;
   className?: string;
+  // Cell data for rendering recognized content and skipping recognized strokes
+  cells?: Record<string, import('@/types/ledger').LedgerCellData>;
 }
 
 /**
  * Main ledger canvas component
- * Manages three stacked canvas layers: paper, grid, and ink
- * 
+ * Manages four stacked canvas layers: paper, grid, selection, and ink
+ *
  * Architecture:
  * - Z-index 1: Paper background with texture
  * - Z-index 1: Grid lines (rows and columns)
+ * - Z-index 1.5: Selection highlight (canvas layer, BELOW ink)
  * - Z-index 2: Ink strokes
- * - Z-index 3: HTML overlay (rendered separately)
+ * - Z-index 3+: HTML overlay (rendered separately)
  */
 export function LedgerCanvas({
   ledgerConfig,
@@ -43,18 +48,22 @@ export function LedgerCanvas({
   selectedCell,
   inkCanvasRef: externalInkCanvasRef,
   recognizingCells = new Set(),
+  scrollContainerRef,
   onPointerDown,
   onPointerMove,
   onPointerUp,
   onPointerLeave,
   className = '',
+  cells = {},
 }: LedgerCanvasProps) {
   const {
     paperCanvasRef,
     gridCanvasRef,
+    selectionCanvasRef,
     inkCanvasRef: internalInkCanvasRef,
     paperCtx,
     gridCtx,
+    selectionCtx,
     inkCtx,
     canvasSize,
     isReady,
@@ -76,7 +85,10 @@ export function LedgerCanvas({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerLeave}
       onPointerCancel={onPointerLeave}
-      style={{ touchAction: 'none' }}
+      style={{
+        // Allow scrolling by default, disable touch action only within selected cell (handled in pointer events)
+        touchAction: selectedCell ? 'none' : 'auto',
+      }}
     >
       {/* Loading skeleton while canvas initializes */}
       {!isReady && (
@@ -110,6 +122,14 @@ export function LedgerCanvas({
         aria-hidden="true"
       />
 
+      {/* Selection layer (z-index: 1.5, between grid and ink) */}
+      <canvas
+        ref={selectionCanvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ zIndex: 1.5 }}
+        aria-hidden="true"
+      />
+
       {/* Ink layer (z-index: 2) */}
       <canvas
         ref={internalInkCanvasRef}
@@ -134,6 +154,14 @@ export function LedgerCanvas({
             height={canvasSize.height}
             ledgerConfig={ledgerConfig}
           />
+          <SelectionLayer
+            key={`selection-${renderKey}`}
+            ctx={selectionCtx}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            ledgerConfig={ledgerConfig}
+            selectedCell={selectedCell}
+          />
           <InkLayer
             key={`ink-${renderKey}`}
             ctx={inkCtx}
@@ -145,6 +173,7 @@ export function LedgerCanvas({
             currentColor={currentColor}
             selectedCell={selectedCell}
             ledgerConfig={ledgerConfig}
+            cells={cells}
           />
         </>
       )}

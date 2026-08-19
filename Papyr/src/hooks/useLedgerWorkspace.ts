@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useInkEngine } from './useInkEngine';
 import { useCellSelection } from '@/components/ledger-workspace/useCellSelection';
 import { useLedgerConfig } from '@/components/ledger-workspace/useLedgerConfig';
-import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent, type LedgerConfig, type LedgerColumn, getCellId } from '@/types/ledger';
+import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent, type LedgerConfig, type LedgerColumn, type LedgerCellData, getCellId } from '@/types/ledger';
 import type { RawPoint } from '@/lib/ink-engine/types';
 import { captureCellImage, recognizeInk } from '@/lib/ink-recognition';
 import { HandwritingSessionManager } from '@/lib/handwriting-session';
@@ -57,10 +57,20 @@ export function useLedgerWorkspace({
   // Recognition state
   const [recognizingCells, setRecognizingCells] = useState<Set<string>>(new Set());
   
+  // Cell data state (recognized text and typed values)
+  const [cells, setCells] = useState<Record<string, LedgerCellData>>(
+    initialContent?.cells || {}
+  );
+
+  // Calendar picker state
+  const [calendarPickerCell, setCalendarPickerCell] = useState<{ cellId: string; columnIndex: number; rowIndex: number } | null>(null);
+  
   // Refs
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pointerStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   
   // Handwriting session manager (replaces old per-stroke recognition logic)
   const sessionManager = useMemo(() => {
@@ -78,6 +88,14 @@ export function useLedgerWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialContent?.strokes]);
 
+  // Load initial cells when content is provided
+  // This handles the case where initialContent arrives after initial render (e.g., async page load)
+  useEffect(() => {
+    if (initialContent?.cells && Object.keys(initialContent.cells).length > 0) {
+      setCells(initialContent.cells);
+    }
+  }, [initialContent?.cells]);
+
   // Debounced save
   const debouncedSave = useCallback(() => {
     if (!onSave) return;
@@ -94,6 +112,7 @@ export function useLedgerWorkspace({
         const content: LedgerPageContent = {
           strokes: inkEngine.strokes,
           ledger: ledgerConfig.ledgerConfig,
+          cells,
         };
         await onSave(content);
       } catch (error) {
@@ -102,14 +121,14 @@ export function useLedgerWorkspace({
         setIsSaving(false);
       }
     }, 500);
-  }, [onSave, inkEngine.strokes, ledgerConfig.ledgerConfig]);
+  }, [onSave, inkEngine.strokes, ledgerConfig.ledgerConfig, cells]);
 
-  // Trigger save when strokes or config changes
+  // Trigger save when strokes, config, or cells change
   useEffect(() => {
-    if (inkEngine.strokes.length > 0 || ledgerConfig.ledgerConfig.columns.length > 0) {
+    if (inkEngine.strokes.length > 0 || ledgerConfig.ledgerConfig.columns.length > 0 || Object.keys(cells).length > 0) {
       debouncedSave();
     }
-  }, [inkEngine.strokes.length, ledgerConfig.ledgerConfig, debouncedSave]);
+  }, [inkEngine.strokes.length, ledgerConfig.ledgerConfig, cells, debouncedSave]);
 
   // Setup handwriting session event listeners for recognition
   useEffect(() => {
@@ -144,11 +163,12 @@ export function useLedgerWorkspace({
           rowIndex: parseInt(match[2], 10),
         };
         
-        // Capture cell image for recognition
+        // Capture cell image for recognition using actual stroke bounds
         const imageData = captureCellImage(
           inkCanvasRef.current,
           ledgerConfig.ledgerConfig,
-          cellCoords
+          cellCoords,
+          segment.strokes
         );
         
         if (!imageData) {
@@ -166,20 +186,55 @@ export function useLedgerWorkspace({
         // Call recognition API
         const recognizedText = await recognizeInk(imageData, columnLabel);
         
-        if (recognizedText !== null) {
+        if (recognizedText !== null && recognizedText !== '') {
           console.log('[INK] RECOGNITION_SUCCESS', {
             segmentId: segment.id,
             text: recognizedText,
+            cellId,
           });
-          
+
           // Mark segment as recognized with the result
           sessionManager.markSegmentRecognized(segment.id, recognizedText);
-          
-          // TODO: Store recognized text in cell data structure
-          // For now, just log it
+
+          // Store recognized text in cell data
+          setCells(prevCells => {
+            const nextCells: Record<string, import('@/types/ledger').LedgerCellData> = {
+              ...prevCells,
+              [cellId]: {
+                cellId,
+                value: recognizedText,
+                content_type: 'text' as const,
+              },
+            };
+            // DEBUG: Log what we're setting
+            console.log('[useLedgerWorkspace] setCells after RECOGNITION_SUCCESS:', {
+              cellId,
+              newCellData: nextCells[cellId],
+              allCellsKeys: Object.keys(nextCells),
+            });
+            return nextCells;
+          });
         } else {
-          console.warn('[INK] RECOGNITION_FAILED', { segmentId: segment.id });
+          console.warn('[INK] RECOGNITION_FAILED or empty', { segmentId: segment.id, result: recognizedText });
           sessionManager.markSegmentRecognized(segment.id);
+          // Set content_type to 'ink' with empty value to show indicator
+          setCells(prevCells => {
+            const nextCells: Record<string, import('@/types/ledger').LedgerCellData> = {
+              ...prevCells,
+              [cellId]: {
+                cellId,
+                value: '',
+                content_type: 'ink' as const,
+              },
+            };
+            // DEBUG: Log what we're setting
+            console.log('[useLedgerWorkspace] setCells after RECOGNITION_FAILED:', {
+              cellId,
+              newCellData: nextCells[cellId],
+              allCellsKeys: Object.keys(nextCells),
+            });
+            return nextCells;
+          });
         }
       } catch (error) {
         console.error('[INK] Recognition error:', error);
@@ -189,6 +244,11 @@ export function useLedgerWorkspace({
         setRecognizingCells(prev => {
           const next = new Set(prev);
           next.delete(cellId);
+          // DEBUG: Log recognizingCells cleanup
+          console.log('[useLedgerWorkspace] recognizingCells cleanup:', {
+            cellId,
+            remainingRecognizing: Array.from(next),
+          });
           return next;
         });
       }
@@ -226,7 +286,7 @@ export function useLedgerWorkspace({
     };
   }, [cellSelection.selectedCell, pageId, sessionManager]);
 
-  // Pointer event handlers
+  // Pointer event handlers with scroll offset support
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Ignore if another pointer is already active
     if (activePointerIdRef.current !== null) return;
@@ -237,10 +297,22 @@ export function useLedgerWorkspace({
     const target = e.currentTarget;
     const rect = target.getBoundingClientRect();
 
+    // Get scroll container to account for scroll offsets
+    const scrollContainer = target.closest('[role="region"]')?.parentElement;
+    const scrollLeft = scrollContainer?.scrollLeft || 0;
+    const scrollTop = scrollContainer?.scrollTop || 0;
+
+    // Calculate canvas-relative coordinates accounting for scroll
+    const canvasX = e.clientX - rect.left + scrollLeft;
+    const canvasY = e.clientY - rect.top + scrollTop;
+
+    // Store start position for gesture detection
+    pointerStartPositionRef.current = { x: e.clientX, y: e.clientY };
+
     activePointerIdRef.current = e.pointerId;
     setIsDrawing(true);
 
-    // Try to capture pointer
+    // Try to capture pointer - captures on the container which spans the full visible canvas
     try {
       target.setPointerCapture(e.pointerId);
     } catch {
@@ -248,8 +320,8 @@ export function useLedgerWorkspace({
     }
 
     setCurrentPoints([{
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: canvasX,
+      y: canvasY,
       t: Date.now(),
       pressure: e.pressure,
       tiltX: e.tiltX,
@@ -263,9 +335,19 @@ export function useLedgerWorkspace({
     if (!isDrawing) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
+    
+    // Get scroll container to account for scroll offsets
+    const scrollContainer = e.currentTarget.closest('[role="region"]')?.parentElement;
+    const scrollLeft = scrollContainer?.scrollLeft || 0;
+    const scrollTop = scrollContainer?.scrollTop || 0;
+    
+    // Calculate canvas-relative coordinates accounting for scroll
+    const canvasX = e.clientX - rect.left + scrollLeft;
+    const canvasY = e.clientY - rect.top + scrollTop;
+    
     setCurrentPoints(prev => [...prev, {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: canvasX,
+      y: canvasY,
       t: Date.now(),
       pressure: e.pressure,
       tiltX: e.tiltX,
@@ -323,11 +405,49 @@ export function useLedgerWorkspace({
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      
+
       // Cleanup session manager
       sessionManager.destroy();
     };
   }, [sessionManager]);
+
+  // Open calendar picker for a date cell
+  const openCalendarPicker = useCallback((columnIndex: number, rowIndex: number) => {
+    const cellId = getCellId({ columnIndex, rowIndex });
+    const cellData = cells[cellId];
+
+    // Only open for date-type columns
+    const column = ledgerConfig.ledgerConfig.columns[columnIndex];
+    if (column?.type === 'date') {
+      setCalendarPickerCell({ cellId, columnIndex, rowIndex });
+    }
+  }, [cells, ledgerConfig.ledgerConfig.columns]);
+
+  // Close calendar picker
+  const closeCalendarPicker = useCallback(() => {
+    setCalendarPickerCell(null);
+  }, []);
+
+  // Set date for a cell from calendar picker
+  const setCellDate = useCallback((cellId: string, date: Date) => {
+    const formattedDate = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+
+    setCells(prevCells => ({
+      ...prevCells,
+      [cellId]: {
+        cellId,
+        value: formattedDate,
+        content_type: 'text',
+      },
+    }));
+
+    // Close picker after selection
+    setCalendarPickerCell(null);
+  }, []);
 
   return {
     // Ink engine
@@ -348,12 +468,22 @@ export function useLedgerWorkspace({
     recognizingCells,
     inkCanvasRef,
     
+    // Cell data
+    cells,
+    getCellValue: useCallback((cellId: string) => cells[cellId]?.value, [cells]),
+
+    // Calendar picker
+    calendarPickerCell,
+    openCalendarPicker,
+    closeCalendarPicker,
+    setCellDate,
+
     // Pointer handlers
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     handlePointerLeave,
-    
+
     // Metadata
     bookId,
     pageId,

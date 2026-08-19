@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { StrokeRenderer } from '@/lib/ink-engine/stroke-renderer';
 import { PEN_CONFIGS, type Stroke, type RawPoint, type PenSize } from '@/lib/ink-engine/types';
-import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, getCellBounds } from '@/types/ledger';
+import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, type LedgerCellData, getCellBounds, parseCellId } from '@/types/ledger';
 
 interface InkLayerProps {
   ctx: CanvasRenderingContext2D | null;
@@ -13,6 +13,8 @@ interface InkLayerProps {
   currentColor: string;
   selectedCell: CellCoordinates | null;
   ledgerConfig: LedgerConfig;
+  // Cell data for determining which strokes to skip (recognized text cells)
+  cells?: Record<string, LedgerCellData>;
 }
 
 /**
@@ -30,6 +32,7 @@ export function InkLayer({
   currentColor,
   selectedCell,
   ledgerConfig,
+  cells = {},
 }: InkLayerProps) {
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const offscreenCtxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -80,10 +83,41 @@ export function InkLayer({
       offscreenCtx.clearRect(0, 0, width, height);
 
       // Render all completed strokes to offscreen canvas
-      // Completed strokes are rendered at their stored positions without clipping
-      // (they were already clipped when drawn under their cell's selection)
+      // Each stroke is clipped to its own cell's bounds (if it has a cell_id)
+      // SKIP strokes for cells that have resolved content (text, number, or failed ink)
+      // Only cells with 'empty' content_type (or no cell data) should show raw ink
       for (const stroke of strokes) {
+        // Check if this stroke's cell has resolved content
+        const cellData = stroke.cell_id ? cells[stroke.cell_id] : null;
+        if (cellData && cellData.content_type !== 'empty') {
+          // Skip rendering this stroke - the cell will show text/number/indicator instead
+          continue;
+        }
+
         offscreenCtx.fillStyle = stroke.color;
+
+        // If stroke has a cell_id, clip to that cell's bounds
+        if (stroke.cell_id) {
+          const cellCoords = parseCellId(stroke.cell_id);
+          if (cellCoords) {
+            const bounds = getCellBounds(ledgerConfig, cellCoords.columnIndex, cellCoords.rowIndex);
+            if (bounds) {
+              offscreenCtx.save();
+              offscreenCtx.beginPath();
+              offscreenCtx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+              offscreenCtx.clip();
+
+              for (const segment of stroke.segments) {
+                renderer.drawSegment(offscreenCtx, segment);
+              }
+
+              offscreenCtx.restore();
+              continue; // Skip the unclipped render below
+            }
+          }
+        }
+
+        // Free strokes (no cell_id) or strokes with invalid cell_id render unclipped
         for (const segment of stroke.segments) {
           renderer.drawSegment(offscreenCtx, segment);
         }
@@ -106,25 +140,15 @@ export function InkLayer({
       }
     }
 
-    // Render current stroke (if drawing) - clip to selected cell bounds
-    if (currentStroke && currentStroke.length > 1 && selectedCell) {
-      const bounds = getCellBounds(ledgerConfig, selectedCell.columnIndex, selectedCell.rowIndex);
-      if (bounds) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
-        ctx.clip();
-
-        const tailSegments = renderer.renderStrokeTail(currentStroke);
-        ctx.fillStyle = currentColor;
-        for (const segment of tailSegments) {
-          renderer.drawSegment(ctx, segment, 10); // Fewer steps for real-time
-        }
-
-        ctx.restore();
+    // Render current stroke (if drawing) - no clip, write anywhere on the visible canvas
+    if (currentStroke && currentStroke.length > 1) {
+      const tailSegments = renderer.renderStrokeTail(currentStroke);
+      ctx.fillStyle = currentColor;
+      for (const segment of tailSegments) {
+        renderer.drawSegment(ctx, segment, 10); // Fewer steps for real-time
       }
     }
-  }, [ctx, width, height, strokes, currentStroke, currentColor, selectedCell, ledgerConfig]);
+  }, [ctx, width, height, strokes, currentStroke, currentColor, selectedCell, ledgerConfig, cells]);
 
   return null; // This component only renders to canvas, no DOM output
 }

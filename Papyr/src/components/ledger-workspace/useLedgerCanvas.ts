@@ -1,104 +1,125 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { LedgerConfig } from '@/types/ledger';
 
 /**
  * Hook for managing ledger canvas setup and lifecycle
  * Handles canvas initialization, DPI scaling, and resize events
+ *
+ * Layer architecture (bottom to top):
+ * - Z-index 1: Paper background with texture
+ * - Z-index 1: Grid lines (rows and columns)
+ * - Z-index 1.5: Selection highlight (rendered on canvas, BELOW ink)
+ * - Z-index 2: Ink strokes
+ * - Z-index 3+: HTML overlays (CellContent, CellHighlights, CalendarPicker)
  */
 export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   const paperCanvasRef = useRef<HTMLCanvasElement>(null);
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
+  const selectionCanvasRef = useRef<HTMLCanvasElement>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   const paperCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const gridCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const selectionCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const inkCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  
+
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [isReady, setIsReady] = useState(false);
   const [renderKey, setRenderKey] = useState(0); // Force re-render of layers
 
-  // Setup canvases with proper DPI scaling
-  useEffect(() => {
+  // Memoize setupCanvases to avoid recreating on every render
+  const setupCanvases = useCallback(() => {
     const paperCanvas = paperCanvasRef.current;
     const gridCanvas = gridCanvasRef.current;
+    const selectionCanvas = selectionCanvasRef.current;
     const inkCanvas = inkCanvasRef.current;
 
-    if (!paperCanvas || !gridCanvas || !inkCanvas) return;
+    if (!paperCanvas || !gridCanvas || !selectionCanvas || !inkCanvas) return false;
 
     const paperCtx = paperCanvas.getContext('2d');
     const gridCtx = gridCanvas.getContext('2d');
+    const selectionCtx = selectionCanvas.getContext('2d');
     const inkCtx = inkCanvas.getContext('2d');
 
-    if (!paperCtx || !gridCtx || !inkCtx) {
+    if (!paperCtx || !gridCtx || !selectionCtx || !inkCtx) {
       console.error('Failed to get canvas contexts');
-      return;
+      return false;
     }
 
     paperCtxRef.current = paperCtx;
     gridCtxRef.current = gridCtx;
+    selectionCtxRef.current = selectionCtx;
     inkCtxRef.current = inkCtx;
 
-    const setupCanvases = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const rect = paperCanvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const rect = paperCanvas.getBoundingClientRect();
 
-      // Set display size (CSS pixels)
-      const displayWidth = rect.width;
-      const displayHeight = rect.height;
+    // Set display size (CSS pixels)
+    const displayWidth = rect.width;
+    const displayHeight = rect.height;
 
-      // Skip if container has no size yet (prevents blank canvas)
-      if (displayWidth === 0 || displayHeight === 0) {
-        console.warn('Canvas container has zero dimensions, will retry...');
-        return false;
+    // Skip if container has no size yet
+    if (displayWidth === 0 || displayHeight === 0) {
+      return false;
+    }
+
+    console.log(`Canvas setup successful: ${displayWidth}x${displayHeight}`);
+
+    // Set actual size in memory (scaled by DPI)
+    [paperCanvas, gridCanvas, selectionCanvas, inkCanvas].forEach(canvas => {
+      canvas.width = displayWidth * dpr;
+      canvas.height = displayHeight * dpr;
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+    });
+
+    // Scale contexts for DPI
+    // Note: Setting canvas.width/height resets the context, so we need to reapply scaling
+    [paperCtx, gridCtx, selectionCtx, inkCtx].forEach(ctx => {
+      ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+    });
+
+    setCanvasSize({ width: displayWidth, height: displayHeight });
+    setIsReady(true);
+    setRenderKey(prev => prev + 1); // Trigger layer re-render
+
+    console.log('Canvas contexts scaled and ready, DPR:', dpr);
+    return true;
+  }, []);
+
+  // Setup canvases with ResizeObserver for responsive sizing
+  useEffect(() => {
+    const paperCanvas = paperCanvasRef.current;
+    const gridCanvas = gridCanvasRef.current;
+    const selectionCanvas = selectionCanvasRef.current;
+    const inkCanvas = inkCanvasRef.current;
+
+    if (!paperCanvas || !gridCanvas || !selectionCanvas || !inkCanvas) return;
+
+    // Initial setup attempt
+    setupCanvases();
+
+    // Set up ResizeObserver to handle container size changes
+    // This replaces the retry-loop workaround - we now respond to actual layout changes
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Only re-setup if the observed element (the canvas container) has a size
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          setupCanvases();
+          break; // One successful setup is enough
+        }
       }
+    });
 
-      console.log(`Canvas setup successful: ${displayWidth}x${displayHeight}`);
+    // Observe the canvas container (parent of the first canvas)
+    const container = paperCanvas.parentElement;
+    if (container) {
+      resizeObserver.observe(container);
+    }
 
-      // Set actual size in memory (scaled by DPI)
-      [paperCanvas, gridCanvas, inkCanvas].forEach(canvas => {
-        canvas.width = displayWidth * dpr;
-        canvas.height = displayHeight * dpr;
-        canvas.style.width = `${displayWidth}px`;
-        canvas.style.height = `${displayHeight}px`;
-      });
-
-      // Scale contexts for DPI
-      // Note: Setting canvas.width/height resets the context, so we need to reapply scaling
-      [paperCtx, gridCtx, inkCtx].forEach(ctx => {
-        ctx.scale(dpr, dpr);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-      });
-
-      setCanvasSize({ width: displayWidth, height: displayHeight });
-      setIsReady(true);
-      setRenderKey(prev => prev + 1); // Trigger layer re-render
-      
-      console.log('Canvas contexts scaled and ready, DPR:', dpr);
-      return true;
-    };
-
-    // Try to setup canvases, retry if container has no dimensions yet
-    let retryCount = 0;
-    const maxRetries = 20; // Increased to allow more time for layout
-    const retryDelay = 50; // ms between retries
-    
-    const trySetup = () => {
-      const success = setupCanvases();
-      
-      // If setup failed and we haven't exceeded retries, try again after delay
-      if (!success && retryCount < maxRetries) {
-        retryCount++;
-        requestAnimationFrame(trySetup);
-      } else if (!success) {
-        console.error(`Canvas setup failed after ${maxRetries} attempts. Container may not have dimensions.`);
-      }
-    };
-    
-    trySetup();
-
-    // Handle window resize
+    // Also handle window resize as a fallback
     const handleResize = () => {
       setupCanvases();
     };
@@ -106,16 +127,19 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
     window.addEventListener('resize', handleResize);
 
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [setupCanvases]);
 
   return {
     paperCanvasRef,
     gridCanvasRef,
+    selectionCanvasRef,
     inkCanvasRef,
     paperCtx: paperCtxRef.current,
     gridCtx: gridCtxRef.current,
+    selectionCtx: selectionCtxRef.current,
     inkCtx: inkCtxRef.current,
     canvasSize,
     isReady,

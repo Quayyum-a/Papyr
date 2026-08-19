@@ -77,7 +77,8 @@ describe('CellHighlights', () => {
     // Row 2, Column 1: (2 rows * 2 columns per row) + column 1 = cell 5
     const selectedCellElement = cells[5];
 
-    expect(selectedCellElement).toHaveClass('bg-yellow-50');
+    // Selection is now rendered on canvas layer; HTML overlay uses pointer-events-none
+    expect(selectedCellElement).toHaveClass('pointer-events-none');
   });
 
   it('should clear selection when clicking background', () => {
