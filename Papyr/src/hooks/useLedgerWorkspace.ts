@@ -100,9 +100,9 @@ export function useLedgerWorkspace({
           [cellId]: {
             cellId,
             value: state.recognizedText || (state.recognitionStatus === 'failed' ? '' : prev[cellId]?.value || ''),
+            // Show raw ink while recognition is pending/recognizing; only show ink icon on failure
             content_type: state.recognitionStatus === 'recognized' ? 'text' :
-                         state.recognitionStatus === 'failed' ? 'ink' :
-                         state.hasPendingStrokes ? 'ink' : 'empty',
+                         state.recognitionStatus === 'failed' ? 'ink' : 'empty',
           } as LedgerCellData,
         }));
 
