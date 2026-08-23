@@ -121,10 +121,6 @@ export function useLedgerWorkspace({
         console.log('[INK] Recognition complete', { cellId, success: result.success, text: result.text, error: result.error });
       },
       isOnline: () => navigator.onLine,
-      enqueueOffline: (job) => {
-        // TODO: Integrate with offline queue when implemented
-        console.log('[INK] Offline queue not yet implemented', job.id);
-      },
     });
     return service;
   }, [bookId, pageId, ledgerConfig.ledgerConfig]);
