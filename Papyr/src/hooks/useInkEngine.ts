@@ -105,6 +105,21 @@ export function useInkEngine() {
     });
   }, []);
 
+  const removeStroke = useCallback((strokeId: string) => {
+    setState(prev => {
+      const newStrokes = prev.strokes.filter(s => s.id !== strokeId);
+      const newHistory = prev.history.slice(0, prev.historyIndex + 1);
+      newHistory.push(newStrokes);
+
+      return {
+        ...prev,
+        strokes: newStrokes,
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      };
+    });
+  }, []);
+
   const setPenSize = useCallback((size: PenSize) => {
     setState(prev => ({ ...prev, currentPenSize: size }));
   }, []);

@@ -70,6 +70,18 @@ export function CellContent({
 
             // Render recognized text
             if (cellData?.content_type === 'text' && cellData.value) {
+              // Format date columns consistently (MMM DD, YYYY)
+              let displayValue = cellData.value;
+              if (column.type === 'date') {
+                const parsedDate = new Date(cellData.value);
+                if (!isNaN(parsedDate.getTime())) {
+                  displayValue = parsedDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  });
+                }
+              }
               return (
                 <div
                   key={column.id}
@@ -80,7 +92,7 @@ export function CellContent({
                     className="text-sm text-gray-900 truncate select-none"
                     style={{ fontFamily: 'Georgia, serif', fontSize: '13px', lineHeight: '1.4' }}
                   >
-                    {cellData.value}
+                    {displayValue}
                   </span>
                 </div>
               );

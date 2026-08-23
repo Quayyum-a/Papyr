@@ -15,6 +15,7 @@ interface SelectionLayerProps {
  * Renders the cell selection highlight on a canvas layer BELOW the ink layer
  * This ensures handwriting always remains visually primary and is never covered by selection UI
  * Uses a warm, neutral translucent treatment consistent with the Papyr design language
+ * Reduced opacity to prevent overshadowing handwriting strokes
  */
 export function SelectionLayer({ ctx, width, height, ledgerConfig, selectedCell }: SelectionLayerProps) {
   useEffect(() => {
@@ -33,24 +34,23 @@ export function SelectionLayer({ ctx, width, height, ledgerConfig, selectedCell 
 
     const { x, y, width: cellWidth, height: cellHeight } = bounds;
 
-    // Use warm amber from Papyr constants for the selection highlight
-    // This matches the LEDGER_CONSTANTS.CELL_HIGHLIGHT_COLOR (#FFFBEA - pale yellow)
-    // and LEDGER_CONSTANTS.CELL_HIGHLIGHT_OPACITY (0.5)
+    // Use much lighter fill (10% opacity) to avoid overshadowing handwriting
+    // The border provides clear visual indication without heavy fill
     const highlightColor = LEDGER_CONSTANTS.CELL_HIGHLIGHT_COLOR;
-    const highlightOpacity = LEDGER_CONSTANTS.CELL_HIGHLIGHT_OPACITY;
+    const highlightOpacity = 0.1; // Reduced from 0.5 to 0.1
 
-    // Draw subtle background fill covering the complete logical cell block
+    // Draw very subtle background fill
     ctx.fillStyle = `${highlightColor}${Math.round(highlightOpacity * 255).toString(16).padStart(2, '0')}`;
     ctx.fillRect(x, y, cellWidth, cellHeight);
 
     // Draw thin warm border for clear identification
     // Using a slightly darker amber for the border
     ctx.strokeStyle = '#F59E0B'; // Amber-500
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5; // Slightly thicker for better visibility
 
     // Use dashed line for organic feel if supported (not available in test mocks)
     if (typeof ctx.setLineDash === 'function') {
-      ctx.setLineDash([2, 2]);
+      ctx.setLineDash([3, 3]);
       ctx.lineDashOffset = 0;
     }
 

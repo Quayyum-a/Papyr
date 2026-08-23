@@ -1,45 +1,45 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { recognizeWithMyScript } from '@/lib/recognition/myscript-client';
+import type { RecognizeRequest, RecognizeResponse } from '@/lib/recognition/types';
 
 interface RecognizeRequestBody {
-  image: string; // base64 PNG data URL
+  bookId: string;
+  pageId: string;
+  cellId: string;
+  cellCoords: { columnIndex: number; rowIndex: number };
+  columnType?: 'text' | 'number' | 'date';
   columnLabel?: string;
-}
-
-interface OpenRouterMessage {
-  role: 'user';
-  content: Array<{
-    type: 'text' | 'image_url';
-    text?: string;
-    image_url?: {
-      url: string;
-    };
+  strokes: Array<{
+    id: string;
+    tool: 'pen' | 'eraser';
+    color: string;
+    size: string;
+    segments: Array<{
+      p0: [number, number];
+      p1: [number, number];
+      p2: [number, number];
+      p3: [number, number];
+      widthStart: number;
+      widthEnd: number;
+      pressureStart: number;
+      pressureEnd: number;
+    }>;
+    createdAt: number;
+    bounds: { minX: number; minY: number; maxX: number; maxY: number };
+    cell_id?: string | null;
   }>;
-}
-
-interface OpenRouterRequest {
-  model: string;
-  messages: OpenRouterMessage[];
-}
-
-interface OpenRouterResponse {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-  error?: {
-    message: string;
-    code?: string;
-  };
+  cellRevision: number;
+  language?: string;
 }
 
 /**
  * POST /api/ink/recognize
- * 
- * Recognizes handwritten text from a cell's ink using OpenRouter vision models.
+ *
+ * Recognizes handwritten text from a cell's strokes using MyScript.
  * Requires authentication via Supabase session.
+ * Validates that the user owns the book/page/cell.
  */
 export async function POST(request: NextRequest) {
   // Check authentication
@@ -75,26 +75,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  // Read OpenRouter configuration from environment
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const modelsEnv = process.env.OPENROUTER_VISION_MODELS;
-
-  if (!apiKey || !modelsEnv) {
-    return NextResponse.json(
-      { error: 'recognition_service_not_configured' },
-      { status: 503 }
-    );
-  }
-
-  const models = modelsEnv.split(',').map((m) => m.trim()).filter(Boolean);
-
-  if (models.length === 0) {
-    return NextResponse.json(
-      { error: 'recognition_service_not_configured' },
-      { status: 503 }
-    );
-  }
-
   // Parse request body
   let body: RecognizeRequestBody;
   try {
@@ -103,101 +83,114 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_request_body' }, { status: 400 });
   }
 
-  const { image, columnLabel } = body;
+  const {
+    bookId,
+    pageId,
+    cellId,
+    cellCoords,
+    columnType,
+    columnLabel,
+    strokes,
+    cellRevision,
+    language = 'en_US',
+  } = body;
 
-  if (!image || typeof image !== 'string') {
+  // Validate required fields
+  if (!bookId || !pageId || !cellId || !cellCoords || !strokes || cellRevision === undefined) {
     return NextResponse.json(
-      { error: 'missing_or_invalid_image' },
+      { error: 'missing_required_fields' },
       { status: 400 }
     );
   }
 
-  // Build prompt
-  let promptText = 'Transcribe the handwritten text in this image. This is natural handwriting, possibly cursive or with connected letters, written quickly — take your time interpreting stroke shapes and letter boundaries rather than assuming clean print handwriting. Respond with only the transcribed text and nothing else — no explanation, no quotation marks. If nothing is legibly written, respond with an empty string.';
+  // Verify user owns this book (RLS will also enforce this, but explicit check is cleaner)
+  const { data: book, error: bookError } = await supabase
+    .from('books')
+    .select('id')
+    .eq('id', bookId)
+    .eq('user_id', user.id)
+    .single();
 
-  if (columnLabel) {
-    promptText += ` This is from a ledger column labeled '${columnLabel}' — if the writing is ambiguous, prefer an interpretation that fits that column (e.g. a date, a name, or a currency amount, whichever fits the label).`;
-
-    // Additional guidance for numeric/symbol-heavy columns
-    const numericLabels = ['debit', 'credit', 'amount', 'date', 'balance', 'total', 'quantity', 'price', 'cost', 'value', 'sum'];
-    const isNumericColumn = numericLabels.some(label =>
-      columnLabel.toLowerCase().includes(label)
-    );
-
-    if (isNumericColumn) {
-      promptText += ` IMPORTANT: This column expects numeric data (amounts, dates, or quantities). Pay close attention to digit shapes — do not guess a plausible-looking word instead of a number. Currency symbols (₦, $, €, £, etc.), commas, decimal points, and slashes in dates (e.g. 12/25/2024) all matter and should be transcribed exactly as written, not paraphrased or omitted. If you see digits, transcribe them as digits.`;
-    }
+  if (bookError || !book) {
+    return NextResponse.json({ error: 'book_not_found' }, { status: 404 });
   }
 
-  // Try each model in order until one succeeds
-  for (const model of models) {
-    try {
-      const openRouterRequest: OpenRouterRequest = {
-        model,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: promptText,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: image,
-                },
-              },
-            ],
-          },
-        ],
-      };
+  // Verify page belongs to book
+  const { data: page, error: pageError } = await supabase
+    .from('pages')
+    .select('id, content')
+    .eq('id', pageId)
+    .eq('book_id', bookId)
+    .single();
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(openRouterRequest),
-      });
-
-      if (!response.ok) {
-        console.error(`Model ${model} failed with status ${response.status}`);
-        continue; // Try next model
-      }
-
-      const data: OpenRouterResponse = await response.json();
-
-      if (data.error) {
-        console.error(`Model ${model} returned error:`, data.error);
-        continue; // Try next model
-      }
-
-      const recognizedText = data.choices?.[0]?.message?.content?.trim();
-
-      // Only treat a non-empty string as a successful recognition.
-      // An empty string is treated as a failure and we try the next model.
-      if (recognizedText !== undefined && recognizedText !== null && recognizedText !== '') {
-        // Success! Return the recognized text
-        console.log(`[Recognition] Model ${model} succeeded with text length: ${recognizedText.length}`);
-        return NextResponse.json({
-          text: recognizedText,
-          model, // Include which model succeeded (useful for debugging)
-        });
-      }
-
-      // If we get here, the model returned an empty string (or undefined/null, but we already checked for that)
-      console.error(`Model ${model} returned empty response`);
-    } catch (error) {
-      console.error(`Model ${model} threw error:`, error);
-      continue; // Try next model
-    }
+  if (pageError || !page) {
+    return NextResponse.json({ error: 'page_not_found' }, { status: 404 });
   }
 
-  // All models failed
-  return NextResponse.json(
-    { error: 'recognition_unavailable' },
-    { status: 503 }
-  );
+  // Verify cell revision matches current state (optimistic locking)
+  const pageContent = page.content as {
+    strokes?: Array<{ cell_id?: string; id: string }>;
+    cells?: Record<string, { recognitionRevision?: number }>;
+  };
+
+  const currentCellStrokes = pageContent.strokes?.filter(s => s.cell_id === cellId) || [];
+  const currentRevision = currentCellStrokes.length; // Simple revision = stroke count
+
+  // Note: We don't strictly enforce revision match here because:
+  // 1. The client sends the revision it's recognizing
+  // 2. The client handles stale result rejection
+  // 3. Server could optionally reject if revision differs significantly
+  // For now, we trust the client's revision and let client handle race conditions
+
+  // Filter out eraser strokes - only recognize pen strokes
+  const penStrokes = strokes.filter(s => s.tool === 'pen');
+
+  if (penStrokes.length === 0) {
+    return NextResponse.json({
+      success: true,
+      recognizedText: '',
+      cellRevision,
+      metadata: { jiix: null },
+    });
+  }
+
+  // Convert strokes to the format expected by MyScript client
+  const myscriptStrokes = penStrokes.map(s => ({
+    id: s.id,
+    tool: s.tool,
+    color: s.color,
+    size: s.size as 'extra-fine' | 'fine' | 'medium' | 'bold' | 'marker',
+    segments: s.segments.map(seg => ({
+      p0: seg.p0,
+      p1: seg.p1,
+      p2: seg.p2,
+      p3: seg.p3,
+      widthStart: seg.widthStart,
+      widthEnd: seg.widthEnd,
+      pressureStart: seg.pressureStart,
+      pressureEnd: seg.pressureEnd,
+    })),
+    createdAt: s.createdAt,
+    bounds: s.bounds,
+    cell_id: s.cell_id,
+  }));
+
+  const recognizeRequest: RecognizeRequest = {
+    bookId,
+    pageId,
+    cellId,
+    cellCoords,
+    columnType,
+    columnLabel,
+    strokes: myscriptStrokes,
+    cellRevision,
+    language,
+  };
+
+  // Call MyScript recognition
+  const result: RecognizeResponse = await recognizeWithMyScript(recognizeRequest);
+
+  // Return result
+  const statusCode = result.success ? 200 : 503;
+  return NextResponse.json(result, { status: statusCode });
 }
