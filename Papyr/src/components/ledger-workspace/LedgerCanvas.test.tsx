@@ -61,7 +61,7 @@ describe('LedgerCanvas', () => {
     vi.clearAllMocks();
   });
 
-  it('should render four canvas elements', () => {
+  it('should render three canvas elements', () => {
     const { container } = render(
       <LedgerCanvas
         ledgerConfig={mockLedgerConfig}
@@ -74,7 +74,7 @@ describe('LedgerCanvas', () => {
     );
 
     const canvases = container.querySelectorAll('canvas');
-    expect(canvases).toHaveLength(4);
+    expect(canvases).toHaveLength(3);
   });
 
   it('should apply correct z-index to layers', () => {
@@ -92,11 +92,10 @@ describe('LedgerCanvas', () => {
     const canvases = container.querySelectorAll('canvas');
     expect(canvases[0]).toHaveStyle({ zIndex: '1' }); // Paper
     expect(canvases[1]).toHaveStyle({ zIndex: '1' }); // Grid
-    expect(canvases[2]).toHaveStyle({ zIndex: '1.5' }); // Selection (between grid and ink)
-    expect(canvases[3]).toHaveStyle({ zIndex: '2' }); // Ink
+    expect(canvases[2]).toHaveStyle({ zIndex: '2' }); // Ink
   });
 
-  it('should disable pointer events on selection and ink layers', () => {
+  it('should disable pointer events on ink layer', () => {
     const { container } = render(
       <LedgerCanvas
         ledgerConfig={mockLedgerConfig}
@@ -109,8 +108,7 @@ describe('LedgerCanvas', () => {
     );
 
     const canvases = container.querySelectorAll('canvas');
-    expect(canvases[2]).toHaveClass('pointer-events-none'); // Selection
-    expect(canvases[3]).toHaveClass('pointer-events-none'); // Ink
+    expect(canvases[2]).toHaveClass('pointer-events-none'); // Ink
   });
 
   it('should set touchAction to auto when no cell is selected', () => {
@@ -196,8 +194,8 @@ describe('LedgerCanvas', () => {
       />
     );
 
-    // Should request 2D context for each canvas (4 visible + 1 offscreen)
+    // Should request 2D context for each canvas (3 visible + 1 offscreen)
     expect(mockGetContext).toHaveBeenCalledWith('2d');
-    expect(mockGetContext).toHaveBeenCalledTimes(5);
+    expect(mockGetContext).toHaveBeenCalledTimes(4);
   });
 });

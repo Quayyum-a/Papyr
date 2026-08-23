@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyScript iinkTS Prototype - Handwriting Recognition Comparison</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .credentials-section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .credential-input {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+    .credential-input input {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .credential-input button {
+      padding: 10px 20px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .credential-input button:hover {
+      background: #0055aa;
+    }
+    .credential-input button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .status.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .status.error {
+      background: #fdeaea;
+      color: #c62828;
+    }
+    .status.info {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    .editor-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    @media (max-width: 900px) {
+      .editor-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    .editor-panel {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid #eee;
+      font-weight: 600;
+      color: #333;
+    }
+    #editor {
+      width: 100%;
+      height: 400px;
+      touch-action: none;
+      background: #fafafa;
+    }
+    .results-panel {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    .result-section {
+      margin-bottom: 20px;
+    }
+    .result-section h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      color: #333;
+    }
+    .result-box {
+      background: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      padding: 15px;
+      font-family: 'Georgia', serif;
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 60px;
+      white-space: pre-wrap;
+    }
+    .result-box.empty {
+      color: #999;
+      font-style: italic;
+    }
+    .comparison-section {
+      margin-top: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .comparison-card {
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+    }
+    .comparison-card h4 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .comparison-card .result-text {
+      font-family: 'Georgia', serif;
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 40px;
+    }
+    .test-words {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .test-word {
+      padding: 8px 16px;
+      background: #e3f2fd;
+      border: 1px solid #bbdefb;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .test-word:hover {
+      background: #bbdefb;
+    }
+    .test-word.active {
+      background: #0066cc;
+      color: white;
+      border-color: #0066cc;
+    }
+    .instructions {
+      background: #fff3e0;
+      border: 1px solid #ffe0b2;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .instructions h3 {
+      margin: 0 0 10px 0;
+      color: #e65100;
+    }
+    .instructions ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin-bottom: 8px;
+      color: #5d4037;
+    }
+    .clear-btn {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .clear-btn:hover {
+      background: #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MyScript iinkTS Prototype</h1>
+    <p class="subtitle">Handwriting recognition comparison: iinkTS (client-side) vs Server-side MyScript REST API</p>
+
+    <div class="instructions">
+      <h3>📋 Setup Instructions</h3>
+      <ul>
+        <li>Create a free MyScript developer account at <a href="https://developer.myscript.com" target="_blank">developer.myscript.com</a></li>
+        <li>Create a new application to get your <strong>Application Key</strong> and <strong>HMAC Key</strong></li>
+        <li>Enter both keys below and click "Initialize Editor"</li>
+        <li>Write test words in the iinkTS editor (left panel)</li>
+        <li>Compare results with server-side MyScript REST API (right panel)</li>
+      </ul>
+    </div>
+
+    <div class="credentials-section">
+      <h3>MyScript Credentials</h3>
+      <div class="credential-input">
+        <input type="text" id="appKey" placeholder="Application Key (e.g., 12345678-abcd-...)" />
+        <input type="password" id="hmacKey" placeholder="HMAC Key (64-char hex string)" />
+        <button id="initBtn" onclick="initializeEditor()">Initialize Editor</button>
+      </div>
+      <div id="status" class="status info" style="display: none;"></div>
+    </div>
+
+    <div class="editor-container">
+      <div class="editor-panel">
+        <div class="panel-header">iinkTS Editor (Client-side, Real-time)</div>
+        <div id="editor"></div>
+        <div style="padding: 15px;">
+          <button class="clear-btn" onclick="clearEditor()">Clear Editor</button>
+        </div>
+      </div>
+
+      <div class="results-panel">
+        <div class="result-section">
+          <h3>iinkTS Recognition Result</h3>
+          <div id="iinktsResult" class="result-box empty">Write in the editor to see real-time recognition...</div>
+        </div>
+
+        <div class="result-section">
+          <h3>Server-side MyScript REST API Result</h3>
+          <div id="restResult" class="result-box empty">Click "Test REST API" after writing...</div>
+          <button style="margin-top: 10px; padding: 8px 16px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="testRestApi()">Test Server-side REST API</button>
+        </div>
+
+        <div class="result-section">
+          <h3>OpenRouter (Legacy) - Not Available</h3>
+          <div id="openrouterResult" class="result-box empty">OpenRouter pipeline removed; using MyScript REST API instead</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="comparison-section">
+      <h3>Quick Test Words</h3>
+      <p style="color: #666; margin-bottom: 10px;">Click a word to load it as a reference for comparison:</p>
+      <div class="test-words" id="testWords"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as iink from 'iink-ts';
+
+    let editor = null;
+    let currentTestWord = null;
+
+    const testWords = [
+      'iPhone', 'iPhone', // cursive and print
+      'Hello', 'World',
+      'Papyr', 'Ledger',
+      'Handwriting', 'Recognition',
+      'Test', 'Demo',
+      '2024', '$1,234.56',
+      'January', 'February'
+    ];
+
+    // Render test word buttons
+    const testWordsContainer = document.getElementById('testWords');
+    testWords.forEach(word => {
+      const btn = document.createElement('button');
+      btn.className = 'test-word';
+      btn.textContent = word;
+      btn.onclick = () => {
+        document.querySelectorAll('.test-word').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTestWord = word;
+        loadTestWord(word);
+      };
+      testWordsContainer.appendChild(btn);
+    });
+
+    function showStatus(message, type = 'info') {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = 'status ' + type;
+      statusEl.style.display = 'block';
+    }
+
+    async function initializeEditor() {
+      const appKey = document.getElementById('appKey').value.trim();
+      const hmacKey = document.getElementById('hmacKey').value.trim();
+
+      if (!appKey || !hmacKey) {
+        showStatus('Please enter both Application Key and HMAC Key', 'error');
+        return;
+      }
+
+      showStatus('Initializing iinkTS editor...', 'info');
+
+      try {
+        const editorElement = document.getElementById('editor');
+
+        editor = await iink.Editor.load(editorElement, 'INTERACTIVEINK', {
+          configuration: {
+            server: {
+              applicationKey: appKey,
+              hmacKey: hmacKey
+            },
+            // Configure for text recognition
+            text: {
+              guides: {
+                enable: true
+              },
+              smartGuide: true,
+              margin: {
+                top: 10,
+                right: 10,
+                bottom: 10,
+                left: 10
+              }
+            }
+          }
+        });
+
+        // Listen for content changes
+        editor.addEventListener('contentChanged', () => {
+          updateIinktsResult();
+        });
+
+        // Listen for export events
+        editor.addEventListener('exported', (event) => {
+          if (event.detail.exports['text/plain']) {
+            document.getElementById('iinktsResult').textContent = event.detail.exports['text/plain'];
+            document.getElementById('iinktsResult').classList.remove('empty');
+          }
+        });
+
+        showStatus('Editor initialized successfully! Write in the editor above.', 'success');
+        document.getElementById('initBtn').disabled = true;
+        document.getElementById('appKey').disabled = true;
+        document.getElementById('hmacKey').disabled = true;
+
+      } catch (error) {
+        console.error('Failed to initialize editor:', error);
+        showStatus('Failed to initialize: ' + error.message, 'error');
+      }
+    }
+
+    function updateIinktsResult() {
+      if (!editor) return;
+
+      editor.export_('text/plain').then(text => {
+        const resultEl = document.getElementById('iinktsResult');
+        if (text && text.trim()) {
+          resultEl.textContent = text.trim();
+          resultEl.classList.remove('empty');
+        } else {
+          resultEl.textContent = 'Write in the editor to see real-time recognition...';
+          resultEl.classList.add('empty');
+        }
+      }).catch(err => {
+        console.error('Export error:', err);
+      });
+    }
+
+    function clearEditor() {
+      if (editor) {
+        editor.clear();
+        document.getElementById('iinktsResult').textContent = 'Write in the editor to see real-time recognition...';
+        document.getElementById('iinktsResult').classList.add('empty');
+        document.getElementById('restResult').textContent = 'Click "Test REST API" after writing...';
+        document.getElementById('restResult').classList.add('empty');
+      }
+    }
+
+    function loadTestWord(word) {
+      if (!editor) return;
+
+      // Clear and set a reference - we can't programmatically draw strokes easily
+      // but we can show the expected result
+      document.getElementById('iinktsResult').textContent = `Expected: "${word}"\n(Write this word in the editor)`;
+      document.getElementById('iinktsResult').classList.remove('empty');
+      document.getElementById('restResult').textContent = `Expected: "${word}"\nClick "Test REST API" to compare`;
+      document.getElementById('restResult').classList.remove('empty');
+    }
+
+    async function testRestApi() {
+      if (!editor) {
+        alert('Please initialize the editor first');
+        return;
+      }
+
+      const resultEl = document.getElementById('restResult');
+      resultEl.textContent = 'Exporting strokes and calling REST API...';
+      resultEl.classList.remove('empty');
+
+      try {
+        // Export strokes as JIIX
+        const jiix = await editor.export_('application/vnd.myscript.jiix');
+        if (!jiix) {
+          resultEl.textContent = 'No strokes to recognize';
+          resultEl.classList.add('empty');
+          return;
+        }
+
+        // Get the app key and hmac key
+        const appKey = document.getElementById('appKey').value.trim();
+        const hmacKey = document.getElementById('hmacKey').value.trim();
+
+        // Call the server-side REST API (proxy through our Next.js API)
+        const response = await fetch('/api/ink/recognize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            // We need to convert the JIIX strokes to the format expected by our API
+            // For now, just send the JIIX and let the server handle it
+            // This would need a custom endpoint or modification
+            testMode: true,
+            jiix: jiix,
+            applicationKey: appKey,
+            hmacKey: hmacKey,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success && data.recognizedText) {
+          resultEl.textContent = data.recognizedText;
+        } else {
+          resultEl.textContent = 'Recognition failed: ' + (data.error || 'Unknown error');
+          resultEl.classList.add('empty');
+        }
+      } catch (error) {
+        console.error('REST API test error:', error);
+        resultEl.textContent = 'Error: ' + error.message + '\n\nNote: This requires a custom endpoint that accepts JIIX directly.\nThe current server API expects raw stroke data, not JIIX.';
+        resultEl.classList.add('empty');
+      }
+    }
+
+    // Make functions globally accessible
+    window.initializeEditor = initializeEditor;
+    window.clearEditor = clearEditor;
+    window.testRestApi = testRestApi;
+  </script>
+</body>
+</html>
