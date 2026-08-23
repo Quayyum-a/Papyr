@@ -81,6 +81,11 @@ export class RecognitionService {
 
   constructor(config: RecognitionServiceConfig) {
     this.config = { ...DefaultConfig, ...config };
+    this.bookId = config.bookId;
+    this.pageId = config.pageId;
+    this.ledgerConfig = config.ledgerConfig;
+    this.onCellStateChange = config.onCellStateChange;
+    this.onRecognitionComplete = config.onRecognitionComplete;
     this.isOnline = config.isOnline ?? (() => navigator.onLine);
     this.debug = this.config.debug;
 
@@ -372,7 +377,7 @@ export class RecognitionService {
     this.log('Starting recognition', { jobId: job.id, cellId: job.cellId, attempt: job.attemptCount });
 
     try {
-      const result = await this.callRecognitionApi(job, jobState.abortController.signal);
+      const result = await this.callRecognitionApi(job, jobState.abortController?.signal);
 
       if (result.success) {
         // Check revision hasn't changed (race condition protection)
@@ -670,13 +675,13 @@ export class RecognitionService {
    */
   destroy(): void {
     // Clear all timers
-    for (const timerId of this.pendingTimers.values()) {
+    for (const timerId of Array.from(this.pendingTimers.values())) {
       clearTimeout(timerId);
     }
     this.pendingTimers.clear();
 
     // Abort all active jobs
-    for (const jobState of this.activeJobs.values()) {
+    for (const jobState of Array.from(this.activeJobs.values())) {
       jobState.abortController?.abort();
       if (jobState.timerId) {
         clearTimeout(jobState.timerId);
