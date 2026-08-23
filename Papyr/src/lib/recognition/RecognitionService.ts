@@ -376,8 +376,12 @@ export class RecognitionService {
 
     this.log('Starting recognition', { jobId: job.id, cellId: job.cellId, attempt: job.attemptCount });
 
+    // AbortController should always exist here since we create it just above
+    if (!jobState.abortController) {
+      throw new Error('AbortController not initialized');
+    }
     try {
-      const result = await this.callRecognitionApi(job, jobState.abortController?.signal);
+      const result = await this.callRecognitionApi(job, jobState.abortController.signal);
 
       if (result.success) {
         // Check revision hasn't changed (race condition protection)
