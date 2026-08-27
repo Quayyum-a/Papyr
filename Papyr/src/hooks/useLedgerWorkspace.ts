@@ -2,10 +2,11 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useInkEngine } from './useInkEngine';
 import { useCellSelection } from '@/components/ledger-workspace/useCellSelection';
 import { useLedgerConfig } from '@/components/ledger-workspace/useLedgerConfig';
-import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent, type LedgerConfig, type LedgerColumn, type LedgerCellData, getCellId } from '@/types/ledger';
-import type { RawPoint } from '@/lib/ink-engine/types';
-import { captureCellImage, recognizeInk } from '@/lib/ink-recognition';
+import { DEFAULT_LEDGER_CONFIG, type LedgerPageContent, type LedgerConfig, type LedgerColumn, type LedgerCellData, getCellId, type CellCoordinates } from '@/types/ledger';
+import type { RawPoint, Stroke } from '@/lib/ink-engine/types';
 import { HandwritingSessionManager } from '@/lib/handwriting-session';
+import { RecognitionService } from '@/lib/recognition';
+import type { RecognitionConfig, CellRecognitionState } from '@/lib/recognition/types';
 
 interface UseLedgerWorkspaceOptions {
   bookId: string;
@@ -56,7 +57,7 @@ export function useLedgerWorkspace({
   
   // Recognition state
   const [recognizingCells, setRecognizingCells] = useState<Set<string>>(new Set());
-  
+
   // Cell data state (recognized text and typed values)
   const [cells, setCells] = useState<Record<string, LedgerCellData>>(
     initialContent?.cells || {}
@@ -64,20 +65,65 @@ export function useLedgerWorkspace({
 
   // Calendar picker state
   const [calendarPickerCell, setCalendarPickerCell] = useState<{ cellId: string; columnIndex: number; rowIndex: number } | null>(null);
-  
+
   // Refs
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const pointerStartPositionRef = useRef<{ x: number; y: number } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  
-  // Handwriting session manager (replaces old per-stroke recognition logic)
+
+  // Handwriting session manager (groups strokes into segments)
   const sessionManager = useMemo(() => {
     const manager = new HandwritingSessionManager();
     manager.setDebugMode(true); // Enable debug logging
     return manager;
   }, []);
+
+  // Recognition service (handles automatic per-cell recognition with MyScript)
+  const recognitionService = useMemo(() => {
+    const service = new RecognitionService({
+      bookId,
+      pageId: pageId || '',
+      ledgerConfig: ledgerConfig.ledgerConfig,
+      quietPeriodMs: 1000,
+      maxConcurrentJobs: 2,
+      maxRetries: 3,
+      retryBaseDelayMs: 1000,
+      retryMaxDelayMs: 10000,
+      language: 'en_US',
+      debug: process.env.NODE_ENV === 'development',
+      onCellStateChange: (cellId, state) => {
+        // Update cells state with recognition info
+        setCells(prev => ({
+          ...prev,
+          [cellId]: {
+            cellId,
+            value: state.recognizedText || (state.recognitionStatus === 'failed' ? '' : prev[cellId]?.value || ''),
+            // Show raw ink while recognition is pending/recognizing; only show ink icon on failure
+            content_type: state.recognitionStatus === 'recognized' ? 'text' :
+                         state.recognitionStatus === 'failed' ? 'ink' : 'empty',
+          } as LedgerCellData,
+        }));
+
+        // Update recognizingCells set
+        setRecognizingCells(prev => {
+          const next = new Set(prev);
+          if (state.recognitionStatus === 'recognizing' || state.recognitionStatus === 'pending') {
+            next.add(cellId);
+          } else {
+            next.delete(cellId);
+          }
+          return next;
+        });
+      },
+      onRecognitionComplete: (cellId, result) => {
+        console.log('[INK] Recognition complete', { cellId, success: result.success, text: result.text, error: result.error });
+      },
+      isOnline: () => navigator.onLine,
+    });
+    return service;
+  }, [bookId, pageId, ledgerConfig.ledgerConfig]);
 
   // Load initial strokes when content is provided
   useEffect(() => {
@@ -93,8 +139,24 @@ export function useLedgerWorkspace({
   useEffect(() => {
     if (initialContent?.cells && Object.keys(initialContent.cells).length > 0) {
       setCells(initialContent.cells);
+
+      // Initialize cell revisions from existing recognition state
+      // Revision = number of strokes in the cell (simple approach)
+      const strokes = initialContent.strokes || [];
+      const cellStrokeCounts: Record<string, number> = {};
+      for (const stroke of strokes) {
+        if (stroke.cell_id) {
+          cellStrokeCounts[stroke.cell_id] = (cellStrokeCounts[stroke.cell_id] || 0) + 1;
+        }
+      }
+      for (const [cellId, count] of Object.entries(cellStrokeCounts)) {
+        // Only set revision if cell has recognized content
+        if (initialContent.cells[cellId]?.content_type === 'text' || initialContent.cells[cellId]?.content_type === 'ink') {
+          recognitionService.setCellRevisionForInit(cellId, count);
+        }
+      }
     }
-  }, [initialContent?.cells]);
+  }, [initialContent?.cells, initialContent?.strokes, recognitionService]);
 
   // Debounced save
   const debouncedSave = useCallback(() => {
@@ -132,128 +194,36 @@ export function useLedgerWorkspace({
 
   // Setup handwriting session event listeners for recognition
   useEffect(() => {
-    // When a handwriting segment is finalized, trigger recognition
-    const unsubscribeSegment = sessionManager.onSegmentFinalized(async (event) => {
+    // When a handwriting segment is finalized, trigger recognition via RecognitionService
+    const unsubscribeSegment = sessionManager.onSegmentFinalized((event) => {
       const { segment, cellId } = event;
-      
-      console.log('[INK] SEGMENT_FINALIZED - Starting recognition', {
+
+      console.log('[INK] SEGMENT_FINALIZED - Scheduling recognition', {
         segmentId: segment.id,
         strokeCount: segment.strokes.length,
         cellId,
       });
-      
-      if (!inkCanvasRef.current) {
-        console.warn('[INK] Cannot recognize - ink canvas not available');
+
+      // Get cell coordinates from cellId
+      const match = cellId.match(/^col-(\d+)-row-(\d+)$/);
+      if (!match) {
+        console.error('[INK] Invalid cellId format:', cellId);
         return;
       }
-      
-      // Mark as recognizing
-      setRecognizingCells(prev => new Set(prev).add(cellId));
-      
-      try {
-        // Get cell coordinates from cellId
-        const match = cellId.match(/^col-(\d+)-row-(\d+)$/);
-        if (!match) {
-          console.error('[INK] Invalid cellId format:', cellId);
-          return;
-        }
-        
-        const cellCoords = {
-          columnIndex: parseInt(match[1], 10),
-          rowIndex: parseInt(match[2], 10),
-        };
-        
-        // Capture cell image for recognition using actual stroke bounds
-        const imageData = captureCellImage(
-          inkCanvasRef.current,
-          ledgerConfig.ledgerConfig,
-          cellCoords,
-          segment.strokes
-        );
-        
-        if (!imageData) {
-          console.warn('[INK] Failed to capture cell image');
-          sessionManager.markSegmentRecognized(segment.id);
-          return;
-        }
-        
-        // Get column label for context
-        const column = ledgerConfig.ledgerConfig.columns[cellCoords.columnIndex];
-        const columnLabel = column?.label;
-        
-        console.log('[INK] RECOGNITION_START', { segmentId: segment.id, columnLabel });
-        
-        // Call recognition API
-        const recognizedText = await recognizeInk(imageData, columnLabel);
-        
-        if (recognizedText !== null && recognizedText !== '') {
-          console.log('[INK] RECOGNITION_SUCCESS', {
-            segmentId: segment.id,
-            text: recognizedText,
-            cellId,
-          });
 
-          // Mark segment as recognized with the result
-          sessionManager.markSegmentRecognized(segment.id, recognizedText);
+      const cellCoords: CellCoordinates = {
+        columnIndex: parseInt(match[1], 10),
+        rowIndex: parseInt(match[2], 10),
+      };
 
-          // Store recognized text in cell data
-          setCells(prevCells => {
-            const nextCells: Record<string, import('@/types/ledger').LedgerCellData> = {
-              ...prevCells,
-              [cellId]: {
-                cellId,
-                value: recognizedText,
-                content_type: 'text' as const,
-              },
-            };
-            // DEBUG: Log what we're setting
-            console.log('[useLedgerWorkspace] setCells after RECOGNITION_SUCCESS:', {
-              cellId,
-              newCellData: nextCells[cellId],
-              allCellsKeys: Object.keys(nextCells),
-            });
-            return nextCells;
-          });
-        } else {
-          console.warn('[INK] RECOGNITION_FAILED or empty', { segmentId: segment.id, result: recognizedText });
-          sessionManager.markSegmentRecognized(segment.id);
-          // Set content_type to 'ink' with empty value to show indicator
-          setCells(prevCells => {
-            const nextCells: Record<string, import('@/types/ledger').LedgerCellData> = {
-              ...prevCells,
-              [cellId]: {
-                cellId,
-                value: '',
-                content_type: 'ink' as const,
-              },
-            };
-            // DEBUG: Log what we're setting
-            console.log('[useLedgerWorkspace] setCells after RECOGNITION_FAILED:', {
-              cellId,
-              newCellData: nextCells[cellId],
-              allCellsKeys: Object.keys(nextCells),
-            });
-            return nextCells;
-          });
-        }
-      } catch (error) {
-        console.error('[INK] Recognition error:', error);
-        sessionManager.markSegmentRecognized(segment.id);
-      } finally {
-        // Remove from recognizing set
-        setRecognizingCells(prev => {
-          const next = new Set(prev);
-          next.delete(cellId);
-          // DEBUG: Log recognizingCells cleanup
-          console.log('[useLedgerWorkspace] recognizingCells cleanup:', {
-            cellId,
-            remainingRecognizing: Array.from(next),
-          });
-          return next;
-        });
-      }
+      // Delegate to RecognitionService for automatic scheduling with quiet period
+      // The service handles debouncing, revision tracking, and MyScript API calls
+      recognitionService.strokeAdded(cellId, cellCoords, segment.strokes);
+
+      // Mark segment as recognized locally (to avoid duplicate processing by session manager)
+      sessionManager.markSegmentRecognized(segment.id);
     });
-    
+
     // When session completes, log summary
     const unsubscribeSession = sessionManager.onSessionComplete((event) => {
       console.log('[INK] SESSION_COMPLETE', {
@@ -263,12 +233,12 @@ export function useLedgerWorkspace({
         totalSegments: event.session.segments.length,
       });
     });
-    
+
     return () => {
       unsubscribeSegment();
       unsubscribeSession();
     };
-  }, [sessionManager, ledgerConfig.ledgerConfig]);
+  }, [sessionManager, ledgerConfig.ledgerConfig, recognitionService]);
 
   // Start/update handwriting session when cell selection changes
   useEffect(() => {
@@ -360,7 +330,7 @@ export function useLedgerWorkspace({
     if (activePointerIdRef.current !== e.pointerId) return;
 
     const target = e.currentTarget;
-    
+
     // Release pointer capture
     try {
       target.releasePointerCapture(e.pointerId);
@@ -381,16 +351,22 @@ export function useLedgerWorkspace({
     if (cellSelection.selectedCellId) {
       stroke.cell_id = cellSelection.selectedCellId;
     }
-    
+
     // Add stroke to ink engine (for rendering and persistence)
     inkEngine.addStroke(stroke);
-    
+
     // Add stroke to handwriting session (for intelligent grouping and recognition)
     sessionManager.addStroke(stroke);
-    
+
+    // Notify recognition service of new stroke for automatic scheduling
+    if (cellSelection.selectedCellId && cellSelection.selectedCell) {
+      const cellStrokes = inkEngine.strokes.filter(s => s.cell_id === cellSelection.selectedCellId);
+      recognitionService.strokeAdded(cellSelection.selectedCellId, cellSelection.selectedCell, cellStrokes);
+    }
+
     setIsDrawing(false);
     setCurrentPoints([]);
-  }, [isDrawing, currentPoints, cellSelection.selectedCellId, inkEngine, sessionManager]);
+  }, [isDrawing, currentPoints, cellSelection.selectedCellId, cellSelection.selectedCell, inkEngine, sessionManager, recognitionService]);
 
   const handlePointerLeave = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Only handle if this is the active pointer
@@ -408,8 +384,11 @@ export function useLedgerWorkspace({
 
       // Cleanup session manager
       sessionManager.destroy();
+
+      // Cleanup recognition service
+      recognitionService.destroy();
     };
-  }, [sessionManager]);
+  }, [sessionManager, recognitionService]);
 
   // Open calendar picker for a date cell
   const openCalendarPicker = useCallback((columnIndex: number, rowIndex: number) => {
@@ -430,11 +409,8 @@ export function useLedgerWorkspace({
 
   // Set date for a cell from calendar picker
   const setCellDate = useCallback((cellId: string, date: Date) => {
-    const formattedDate = date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    // Store as ISO format (YYYY-MM-DD) for consistency
+    const formattedDate = date.toISOString().split('T')[0];
 
     setCells(prevCells => ({
       ...prevCells,

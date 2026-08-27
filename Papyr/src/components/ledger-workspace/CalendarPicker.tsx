@@ -117,9 +117,13 @@ export function CalendarPicker({
 
   const position = getPickerPosition();
 
-  const handleDayClick = (day: number) => {
-    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+  const handleDayClick = (day: number, monthOffset: number = 0) => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + monthOffset, day);
     setSelectedDate(date);
+    // If clicking a day from another month, navigate to that month
+    if (monthOffset !== 0) {
+      setCurrentMonth(date);
+    }
   };
 
   const handleTodayClick = () => {
@@ -191,13 +195,24 @@ export function CalendarPicker({
           {/* Previous month days */}
           {Array.from({ length: firstDayOfMonth }).map((_, i) => {
             const day = prevMonthDays - firstDayOfMonth + i + 1;
+            const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, day);
+            const isSelected = selectedDate &&
+              day === selectedDate.getDate() &&
+              prevMonth.getMonth() === selectedDate.getMonth() &&
+              prevMonth.getFullYear() === selectedDate.getFullYear();
+
             return (
               <button
                 key={`prev-${day}`}
                 type="button"
-                onClick={() => handleDayClick(day)}
-                className="w-8 h-8 text-sm text-gray-300 hover:bg-gray-100 rounded-full transition-colors"
+                onClick={() => handleDayClick(day, -1)}
+                className={`w-8 h-8 text-sm rounded-full transition-colors ${
+                  isSelected
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-100'
+                }`}
                 aria-label={`${day} (previous month)`}
+                aria-selected={isSelected || undefined}
               >
                 {day}
               </button>
@@ -219,7 +234,7 @@ export function CalendarPicker({
               <button
                 key={`curr-${day}`}
                 type="button"
-                onClick={() => handleDayClick(day)}
+                onClick={() => handleDayClick(day, 0)}
                 className={`w-8 h-8 text-sm rounded-full transition-colors ${
                   isSelected
                     ? 'bg-blue-600 text-white'
@@ -239,13 +254,24 @@ export function CalendarPicker({
           {/* Next month days */}
           {Array.from({ length: 42 - firstDayOfMonth - daysInMonth }).map((_, i) => {
             const day = i + 1;
+            const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, day);
+            const isSelected = selectedDate &&
+              day === selectedDate.getDate() &&
+              nextMonth.getMonth() === selectedDate.getMonth() &&
+              nextMonth.getFullYear() === selectedDate.getFullYear();
+
             return (
               <button
                 key={`next-${day}`}
                 type="button"
-                onClick={() => handleDayClick(day)}
-                className="w-8 h-8 text-sm text-gray-300 hover:bg-gray-100 rounded-full transition-colors"
+                onClick={() => handleDayClick(day, 1)}
+                className={`w-8 h-8 text-sm rounded-full transition-colors ${
+                  isSelected
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-100'
+                }`}
                 aria-label={`${day} (next month)`}
+                aria-selected={isSelected || undefined}
               >
                 {day}
               </button>

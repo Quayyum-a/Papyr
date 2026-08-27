@@ -8,19 +8,16 @@ import type { LedgerConfig } from '@/types/ledger';
  * Layer architecture (bottom to top):
  * - Z-index 1: Paper background with texture
  * - Z-index 1: Grid lines (rows and columns)
- * - Z-index 1.5: Selection highlight (rendered on canvas, BELOW ink)
  * - Z-index 2: Ink strokes
- * - Z-index 3+: HTML overlays (CellContent, CellHighlights, CalendarPicker)
+ * - Z-index 3+: HTML overlays (CellHighlights at z-index 3, CellContent at z-index 4)
  */
 export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   const paperCanvasRef = useRef<HTMLCanvasElement>(null);
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
-  const selectionCanvasRef = useRef<HTMLCanvasElement>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const paperCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const gridCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const selectionCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const inkCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -31,24 +28,21 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   const setupCanvases = useCallback(() => {
     const paperCanvas = paperCanvasRef.current;
     const gridCanvas = gridCanvasRef.current;
-    const selectionCanvas = selectionCanvasRef.current;
     const inkCanvas = inkCanvasRef.current;
 
-    if (!paperCanvas || !gridCanvas || !selectionCanvas || !inkCanvas) return false;
+    if (!paperCanvas || !gridCanvas || !inkCanvas) return false;
 
     const paperCtx = paperCanvas.getContext('2d');
     const gridCtx = gridCanvas.getContext('2d');
-    const selectionCtx = selectionCanvas.getContext('2d');
     const inkCtx = inkCanvas.getContext('2d');
 
-    if (!paperCtx || !gridCtx || !selectionCtx || !inkCtx) {
+    if (!paperCtx || !gridCtx || !inkCtx) {
       console.error('Failed to get canvas contexts');
       return false;
     }
 
     paperCtxRef.current = paperCtx;
     gridCtxRef.current = gridCtx;
-    selectionCtxRef.current = selectionCtx;
     inkCtxRef.current = inkCtx;
 
     const dpr = window.devicePixelRatio || 1;
@@ -66,7 +60,7 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
     console.log(`Canvas setup successful: ${displayWidth}x${displayHeight}`);
 
     // Set actual size in memory (scaled by DPI)
-    [paperCanvas, gridCanvas, selectionCanvas, inkCanvas].forEach(canvas => {
+    [paperCanvas, gridCanvas, inkCanvas].forEach(canvas => {
       canvas.width = displayWidth * dpr;
       canvas.height = displayHeight * dpr;
       canvas.style.width = `${displayWidth}px`;
@@ -75,7 +69,7 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
 
     // Scale contexts for DPI
     // Note: Setting canvas.width/height resets the context, so we need to reapply scaling
-    [paperCtx, gridCtx, selectionCtx, inkCtx].forEach(ctx => {
+    [paperCtx, gridCtx, inkCtx].forEach(ctx => {
       ctx.scale(dpr, dpr);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
@@ -93,10 +87,9 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   useEffect(() => {
     const paperCanvas = paperCanvasRef.current;
     const gridCanvas = gridCanvasRef.current;
-    const selectionCanvas = selectionCanvasRef.current;
     const inkCanvas = inkCanvasRef.current;
 
-    if (!paperCanvas || !gridCanvas || !selectionCanvas || !inkCanvas) return;
+    if (!paperCanvas || !gridCanvas || !inkCanvas) return;
 
     // Initial setup attempt
     setupCanvases();
@@ -135,11 +128,9 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   return {
     paperCanvasRef,
     gridCanvasRef,
-    selectionCanvasRef,
     inkCanvasRef,
     paperCtx: paperCtxRef.current,
     gridCtx: gridCtxRef.current,
-    selectionCtx: selectionCtxRef.current,
     inkCtx: inkCtxRef.current,
     canvasSize,
     isReady,

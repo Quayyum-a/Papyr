@@ -70,6 +70,18 @@ export function CellContent({
 
             // Render recognized text
             if (cellData?.content_type === 'text' && cellData.value) {
+              // Format date columns consistently (MMM DD, YYYY)
+              let displayValue = cellData.value;
+              if (column.type === 'date') {
+                const parsedDate = new Date(cellData.value);
+                if (!isNaN(parsedDate.getTime())) {
+                  displayValue = parsedDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  });
+                }
+              }
               return (
                 <div
                   key={column.id}
@@ -80,7 +92,7 @@ export function CellContent({
                     className="text-sm text-gray-900 truncate select-none"
                     style={{ fontFamily: 'Georgia, serif', fontSize: '13px', lineHeight: '1.4' }}
                   >
-                    {cellData.value}
+                    {displayValue}
                   </span>
                 </div>
               );
@@ -109,6 +121,30 @@ export function CellContent({
                       d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 18"
                     />
                   </svg>
+                </div>
+              );
+            }
+
+            // Render live "today" date for date columns with no stored value
+            // This handles both brand-new books and existing books that pre-date the date pre-fill feature
+            if (column.type === 'date' && (!cellData || !cellData.value)) {
+              const today = new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
+              return (
+                <div
+                  key={column.id}
+                  className="flex items-center px-2 h-full overflow-hidden pointer-events-none"
+                  style={{ width: column.width }}
+                >
+                  <span
+                    className="text-sm text-gray-900 truncate select-none"
+                    style={{ fontFamily: 'Georgia, serif', fontSize: '13px', lineHeight: '1.4' }}
+                  >
+                    {today}
+                  </span>
                 </div>
               );
             }
