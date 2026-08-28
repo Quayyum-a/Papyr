@@ -37,6 +37,13 @@ export interface Stroke {
   segments: StrokeSegment[];
   createdAt: number;
   bounds: { minX: number; minY: number; maxX: number; maxY: number };
+  
+  /**
+   * Optional cell ID for ledger workspace feature.
+   * Format: "col-{columnIndex}-row-{rowIndex}"
+   * null or undefined = free ink (not bound to any cell)
+   */
+  cell_id?: string | null;
 }
 
 export const PEN_CONFIGS: Record<PenSize, Omit<PenConfig, 'color'>> = {

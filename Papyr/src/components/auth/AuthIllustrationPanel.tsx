@@ -3,6 +3,41 @@
 export function AuthIllustrationPanel() {
   return (
     <div className="relative w-full h-full flex items-center justify-center">
+      <style jsx>{`
+        @keyframes drawStroke {
+          0% {
+            stroke-dashoffset: var(--stroke-length);
+          }
+          60% {
+            stroke-dashoffset: 0;
+          }
+          100% {
+            stroke-dashoffset: 0;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .handwriting-stroke {
+            animation: none;
+            stroke-dashoffset: 0;
+          }
+        }
+
+        .handwriting-stroke {
+          stroke-dasharray: var(--stroke-length);
+          animation: drawStroke 6s ease-in-out infinite;
+        }
+
+        .handwriting-stroke:nth-of-type(1) {
+          animation-delay: 0s;
+        }
+        .handwriting-stroke:nth-of-type(2) {
+          animation-delay: 2s;
+        }
+        .handwriting-stroke:nth-of-type(3) {
+          animation-delay: 4s;
+        }
+      `}</style>
       <svg
         className="w-full h-full max-w-sm max-h-sm text-amber-100"
         viewBox="0 0 400 400"
@@ -27,6 +62,8 @@ export function AuthIllustrationPanel() {
         />
         {/* Handwriting illustration */}
         <path
+          className="handwriting-stroke"
+          style={{ '--stroke-length': '120' } as React.CSSProperties}
           d="M100 120 Q120 100, 140 110 T180 120"
           stroke="currentColor"
           strokeWidth="2.5"
@@ -34,6 +71,8 @@ export function AuthIllustrationPanel() {
           opacity="0.6"
         />
         <path
+          className="handwriting-stroke"
+          style={{ '--stroke-length': '140' } as React.CSSProperties}
           d="M110 280 Q150 260, 190 290"
           stroke="currentColor"
           strokeWidth="2.5"
@@ -41,6 +80,8 @@ export function AuthIllustrationPanel() {
           opacity="0.5"
         />
         <path
+          className="handwriting-stroke"
+          style={{ '--stroke-length': '80' } as React.CSSProperties}
           d="M250 140 Q280 160, 300 140"
           stroke="currentColor"
           strokeWidth="2"

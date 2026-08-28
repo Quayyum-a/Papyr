@@ -53,6 +53,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Deep equality check for user profiles to avoid unnecessary re-renders
+  function userProfilesEqual(a: UserProfile | null, b: UserProfile | null): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return a.id === b.id &&
+           a.email === b.email &&
+           a.display_name === b.display_name &&
+           a.avatar_url === b.avatar_url &&
+           a.created_at === b.created_at;
+  }
+
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -79,9 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logAuth('AUTH_STATE_CHANGE', { event, hasSession: !!session, hasUser: !!session?.user });
         if (session?.user) {
           const profile = await fetchUserProfile(session.user.id);
-          setUser(profile);
+          // Only update user state if profile actually changed (prevents remounts on token refresh)
+          setUser(prev => userProfilesEqual(prev, profile) ? prev : profile);
         } else {
-          setUser(null);
+          setUser(prev => prev === null ? null : null);
         }
         setLoading(false);
       }

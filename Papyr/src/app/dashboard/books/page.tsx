@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { Search, User } from 'lucide-react';
+import { Search, User, MoreHorizontal, Trash2, AlertTriangle } from 'lucide-react';
 import { PapyrLogo } from '@/components/PapyrLogo';
 import { supabase } from '@/lib/supabase/client';
 
@@ -28,6 +28,9 @@ export default function BooksPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -75,6 +78,59 @@ export default function BooksPage() {
       setLoading(false);
     }
   };
+
+  const handleDeleteBook = async (bookId: string, bookTitle: string) => {
+    setDeletingId(bookId);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const { error: deleteError } = await supabase
+        .from('books')
+        .delete()
+        .eq('id', bookId)
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Remove from local state
+      setBooks(prev => prev.filter(book => book.id !== bookId));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      console.error('Failed to delete book:', err);
+      alert('Failed to delete book. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleMenuClick = (bookId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === bookId ? null : bookId);
+  };
+
+  const handleDeleteClick = (bookId: string, bookTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(null);
+    setDeleteConfirmId(bookId);
+  };
+
+  const handleCloseMenu = () => {
+    setOpenMenuId(null);
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenMenuId(null);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const filteredBooks = books.filter((book) => {
     const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -180,38 +236,103 @@ export default function BooksPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {filteredBooks.map((book) => (
-              <Link
-                key={book.id}
-                href={`/dashboard/books/${book.id}/canvas`}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow overflow-hidden group"
-              >
-                <div
-                  className="w-full h-24 rounded-md mb-3 flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: book.cover_color }}
+              <div key={book.id} className="relative group">
+                <Link
+                  href={`/dashboard/books/${book.id}`}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow overflow-hidden group block"
                 >
-                  <span className="text-3xl font-bold text-white opacity-30">
-                    {book.title.charAt(0).toUpperCase()}
-                  </span>
+                  <div
+                    className="w-full h-24 rounded-md mb-3 flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: book.cover_color }}
+                  >
+                    <span className="text-3xl font-bold text-white opacity-30">
+                      {book.title.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">
+                    {book.title}
+                  </h3>
+                  {book.description && (
+                    <p className="text-xs text-gray-500 line-clamp-1 mb-3">
+                      {book.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{book.page_count} Pages</span>
+                    <span>
+                      {new Date(book.updated_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                </Link>
+
+                {/* Three-dot menu */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => handleMenuClick(book.id, e)}
+                    className="absolute top-3 right-3 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    aria-label={`Options for ${book.title}`}
+                    aria-expanded={openMenuId === book.id}
+                  >
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+
+                  {openMenuId === book.id && (
+                    <div className="absolute right-0 top-10 z-20 w-36 rounded-md border border-gray-200 bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteClick(book.id, book.title, e)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        disabled={deletingId === book.id}
+                      >
+                        <Trash2 className="w-4 h-4 flex-shrink-0" />
+                        <span>Delete book</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">
-                  {book.title}
-                </h3>
-                {book.description && (
-                  <p className="text-xs text-gray-500 line-clamp-1 mb-3">
-                    {book.description}
-                  </p>
-                )}
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{book.page_count} Pages</span>
-                  <span>
-                    {new Date(book.updated_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              </Link>
+              </div>
             ))}
+          </div>
+        )}
+
+        {/* Delete confirmation modal */}
+        {deleteConfirmId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <h2 id="delete-confirm-title" className="text-lg font-semibold text-gray-900">Delete book?</h2>
+              </div>
+              <p className="mb-6 text-gray-600">
+                Are you sure you want to delete <strong className="text-gray-900">&#8220;{filteredBooks.find(b => b.id === deleteConfirmId)?.title || 'this book'}&#8221;</strong>? This action cannot be undone. All pages and content in this book will be permanently removed.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const book = filteredBooks.find(b => b.id === deleteConfirmId);
+                    if (book) handleDeleteBook(book.id, book.title);
+                  }}
+                  disabled={deletingId === deleteConfirmId}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deletingId === deleteConfirmId ? 'Deleting...' : 'Delete permanently'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

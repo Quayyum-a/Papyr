@@ -69,6 +69,18 @@ export function useInkEngine() {
     []
   );
 
+  const loadStrokes = useCallback(
+    (strokes: Stroke[]) => {
+      setState(prev => ({
+        ...prev,
+        strokes,
+        history: [strokes],
+        historyIndex: 0,
+      }));
+    },
+    []
+  );
+
   const undo = useCallback(() => {
     setState(prev => {
       if (prev.historyIndex <= 0) return prev;
@@ -93,6 +105,21 @@ export function useInkEngine() {
     });
   }, []);
 
+  const removeStroke = useCallback((strokeId: string) => {
+    setState(prev => {
+      const newStrokes = prev.strokes.filter(s => s.id !== strokeId);
+      const newHistory = prev.history.slice(0, prev.historyIndex + 1);
+      newHistory.push(newStrokes);
+
+      return {
+        ...prev,
+        strokes: newStrokes,
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      };
+    });
+  }, []);
+
   const setPenSize = useCallback((size: PenSize) => {
     setState(prev => ({ ...prev, currentPenSize: size }));
   }, []);
@@ -105,6 +132,7 @@ export function useInkEngine() {
     strokes: state.strokes,
     createStroke,
     addStroke,
+    loadStrokes,
     undo,
     redo,
     canUndo: state.historyIndex > 0,

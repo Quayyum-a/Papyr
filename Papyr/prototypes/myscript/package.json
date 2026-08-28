@@ -1,0 +1,17 @@
+{
+  "name": "myscript-prototype",
+  "version": "1.0.0",
+  "description": "MyScript iinkTS prototype for handwriting recognition comparison",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "iink-ts": "^4.5.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

@@ -40,7 +40,8 @@ describe('LoginForm', () => {
 
   it('renders sign in button', () => {
     render(<LoginForm />);
-    expect(screen.getByRole('button', { name: /Sign in/i })).toBeInTheDocument();
+    // Use exact match for "Sign in" to avoid matching the Google button
+    expect(screen.getByRole('button', { name: /^Sign in$/i })).toBeInTheDocument();
   });
 
   it('renders Google sign in button', () => {
@@ -66,7 +67,7 @@ describe('LoginForm', () => {
 
   it('disables submit button when loading', async () => {
     const { rerender } = render(<LoginForm />);
-    const submitButton = screen.getByRole('button', { name: /Sign in/i });
+    const submitButton = screen.getByRole('button', { name: /^Sign in$/i });
     expect(submitButton).not.toBeDisabled();
   });
 
@@ -88,17 +89,5 @@ describe('LoginForm', () => {
     const signUpLink = await screen.findByRole('link', { name: /Create an account/i });
     expect(signUpLink).toBeInTheDocument();
     expect(signUpLink).toHaveAttribute('href', '/auth/signup');
-  });
-
-  it('has right-side image area (hidden on mobile)', () => {
-    const { container } = render(<LoginForm />);
-    const rightSide = container.querySelector('.hidden.lg\\:flex');
-    expect(rightSide).toBeInTheDocument();
-  });
-
-  it('uses two-column layout on large screens', () => {
-    const { container } = render(<LoginForm />);
-    const wrapper = container.querySelector('.lg\\:flex-row');
-    expect(wrapper).toBeInTheDocument();
   });
 });

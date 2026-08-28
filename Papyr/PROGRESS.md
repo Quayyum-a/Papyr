@@ -45,62 +45,103 @@ Validate the drawing engine core technologies and deliver a world-class ink rend
 - **Code Quality**: ESLint + TypeScript passing
 - **Long Stroke Performance**: Constant frame time regardless of stroke length
 
+---
+
+## Sprint 1: Authentication & Foundation - COMPLETE ✅
+
+### Goal
+Implement production-ready authentication and core app foundation (books, pages, dashboard).
+
+### Final Status: COMPLETE (2026-08-09)
+
+### Deliverables
+- [x] Supabase Auth integration (email/password, OAuth providers)
+- [x] `/auth/callback` route for email verification
+- [x] Custom email templates (Papyr branded)
+- [x] Production URL detection for redirects
+- [x] Signup/Login forms with validation
+- [x] Password strength meter
+- [x] Error handling overhaul (no raw Supabase errors exposed)
+- [x] Session management with refresh token handling
+- [x] Middleware protection for `/dashboard`, `/profile`
+- [x] Book CRUD (create, list, view, delete)
+- [x] Book cover themes (8 themes: Graphite, Midnight, Forest, Terracotta, Ocean, Amber, Sage, Cream)
+- [x] Page management within books
+- [x] Dashboard with book shelf view
+- [x] Profile page with display name editing
+- [x] Comprehensive test coverage (unit + integration)
+
+### Key Fixes Post-Launch
+- **Signup email verification fix** (2026-08-09): Fixed redirect URL to use production callback instead of localhost
+- **Book creation redesign** (2026-08-09): Replaced category picker with theme-based cover selection; fixed dynamic color rendering bug (inline styles instead of constructed Tailwind classes)
+
+---
+
+## Sprint 2 (P301): Ledger Workspace & Handwriting Recognition - IN PROGRESS 🚧
+
+### Goal
+Transform the book opening experience into a realistic digital ledger workspace where users can write naturally with cell-bound ink strokes, plus handwriting recognition via OpenRouter vision models.
+
+### Current Status: IN PROGRESS (Started 2026-08-07)
+
 ### Completed Tasks
-1. ✅ Basic canvas setup
-2. ✅ Stroke capture and storage
-3. ✅ Undo/redo system
-4. ✅ Pressure simulation
-5. ✅ Perfect-freehand integration
-6. ✅ Premium ink engine redesign
-7. ✅ Zero-latency rendering
-8. ✅ Mobile optimization
-9. ✅ Logo and branding
-10. ✅ Professional UI
-11. ✅ **Render loop re-creation bug fix**
-12. ✅ **Render callback management fix**
-13. ✅ **Code deduplication (drawSegment)**
-14. ✅ **Current stroke tail rendering optimization**
-15. ✅ **Reduced draw steps for real-time rendering**
+- [x] **Task 0**: Audit existing ink engine ✅ (2026-08-07)
+- [x] **Task 1**: Database migration (position column, ledger page structure) ✅ (2026-08-07)
+- [x] **Task 2**: Update type definitions (`src/types/ledger.ts`) ✅ (2026-08-07)
+- [x] **Task 3**: Create ledger canvas components (PaperLayer, GridLayer, InkLayer) ✅ (2026-08-07)
+- [x] **Task 4**: Build ledger overlay components (ColumnHeaders, CellHighlights, selection hooks) ✅ (2026-08-07)
+- [x] **Task 5**: Create book ledger page route (`/dashboard/books/[id]/ledger`) ✅ (2026-08-07)
+- [x] **Task 6**: Cell binding for ink strokes ✅ (merged with Task 5)
+- [x] **Task 7**: Column management features ✅ (merged with Task 4)
+- [x] **Task 8**: Testing, documentation & polish ✅ (2026-08-07)
+- [x] **Supabase Integration** ✅ (2026-08-07): Load/save pages, create default ledger page, debounced save, auth verification
 
-### Resolved Critical Issues
-- **KI-006**: Input latency (RESOLVED) - <16ms
-- **Canvas rendering performance** (RESOLVED) - 60+ FPS
-- **Logo positioning** (RESOLVED) - clean header
-- **Render loop re-creation on stroke** (RESOLVED) - Stable 60 FPS
-- **Double rendering on tool change** (RESOLVED) - Clean callback management
-- **Long stroke slowdown** (RESOLVED) - O(1) tail rendering
+### Open Issues / Regressions
+- 🔴 **Canvas zero-dimension regression**: Ledger canvas renders with 0×0 dimensions on initial load (being investigated)
+- 🟡 **Handwriting recognition (OpenRouter)**: Not yet implemented — planned via `/api/ink/recognize-openrouter` route using vision models
+- 🟡 **Recognized text storage gap**: Recognized text from handwriting recognition needs to be persisted back to cell content
 
-### Known Issues Remaining
-- **KI-001**: Low-end device performance (High priority for next sprint)
-- **KI-002**: Pressure sensitivity inconsistency (Medium priority)
-- **KI-003**: Touch palm rejection (Medium priority)
-- **KI-004**: Local storage quota (Low priority)
-- **KI-005**: Service worker on old browsers (Low priority)
+### Architecture Decisions
+1. Separate route: `/dashboard/books/[id]/ledger` (don't replace canvas page)
+2. Extend types (add optional `cell_id` field to Stroke)
+3. Reuse existing ink engine (proven performance)
+4. Backward compatible content structure
+5. Three-layer canvas system (paper, grid, ink)
+6. HTML overlay with headers and cell selection
+7. Cell binding implemented with `selectedCellId`
+8. Column management with auto-width calculation
 
-### What Works Perfectly
-- Draw smooth, natural strokes
-- Ink appears instantly under pen
-- Pressure varies stroke width
-- Undo/redo with Ctrl+Z/Y
-- Multiple pen sizes
-- Mobile and desktop
-- No lag or stuttering
-- **Long continuous strokes without slowdown**
-- **Immediate visual feedback on every pointer event**
+---
 
-### What's Ready for Sprint 1
-- Solid foundation for features
-- Extensible architecture
-- Production-quality rendering
-- Zero latency achieved
-- **Stable performance at any stroke length**
+## Mobile Support - IN PROGRESS 🚧
 
-### Next Sprint (Sprint 1): UI Toolbar & Tool Selection
-See SPRINT_1.md for details:
-- Color picker
-- Eraser tool (point-based)
-- Stroke customization
-- Feature-complete toolbar
+### Status
+- Mobile viewport handling implemented for dashboard and auth pages
+- Ledger workspace has **open sizing/rendering issue** on mobile (canvas dimensions not adapting correctly)
+- Touch/pen input handling works but needs validation on real devices
 
-### Notes
-Sprint 0 exceeded expectations. Premium ink quality achieved at parity with industry leaders. Critical performance bugs fixed ensuring stable 60+ FPS even during long continuous strokes. Ready to begin Sprint 1 with confidence.
+---
+
+## Summary: What's Actually Built vs. What's Documented
+
+| Feature Area | Actually Built | Documented Status |
+|--------------|----------------|-------------------|
+| Drawing Engine (Sprint 0) | ✅ Production-ready, premium quality | ✅ Accurate |
+| Authentication | ✅ Production-ready (with email fix) | ✅ Accurate |
+| Books/Pages/Dashboard | ✅ Complete with theme-based covers | ✅ Accurate |
+| Ledger Workspace (P301) | ✅ Core workspace functional, **canvas regression open** | ⚠️ Was marked "complete" but has open regression |
+| Handwriting Recognition | 🔴 Not yet implemented (OpenRouter planned) | ⚠️ Was documented as Google Cloud Vision (abandoned) |
+| Mobile Support | 🟡 Partial - dashboard works, ledger has issues | ⚠️ Was marked further along than reality |
+
+---
+
+## Next Priorities
+1. Fix ledger canvas zero-dimension regression
+2. Implement OpenRouter-based handwriting recognition (`/api/ink/recognize-openrouter`)
+3. Persist recognized text back to cell content
+4. Fix mobile ledger workspace rendering
+5. Add recognized text display/edit in cell overlay
+
+---
+
+*Last Updated: 2026-08-16*

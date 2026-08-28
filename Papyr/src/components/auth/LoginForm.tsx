@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { PapyrLogo } from '@/components/PapyrLogo';
+import { PapyrLedgerAnimation } from './PapyrLedgerAnimation';
 
 export function LoginForm() {
   const { signIn, loading, error } = useAuth();
@@ -27,8 +28,8 @@ export function LoginForm() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left side - Form */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-6">
+      <div className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 lg:pr-20">
+        <div className="w-full max-w-md space-y-8">
           <div>
             <PapyrLogo href="/" />
           </div>
@@ -40,7 +41,7 @@ export function LoginForm() {
             </p>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm" role="alert">
                 {error}
@@ -87,13 +88,17 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={isLoading || loading}
-              className="w-full py-3 px-4 bg-slate-900 text-white font-medium rounded-full hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              id="signInBtn"
+              className="w-full py-3 px-4 bg-slate-900 text-white font-medium rounded-full hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {isLoading || loading ? (
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Signing in...
+                </>
               ) : (
                 'Sign in'
               )}
@@ -123,63 +128,20 @@ export function LoginForm() {
             </button>
           </form>
 
-          <div className="text-center text-sm">
+          <p className="text-center text-sm">
             <span className="text-gray-600">New to Papyr? </span>
             <Link href="/auth/signup" className="font-medium text-teal-600 hover:text-teal-700">
               Create an account
             </Link>
-          </div>
+          </p>
         </div>
       </div>
 
-      {/* Right side - Image */}
-      <div className="hidden lg:flex flex-1 bg-amber-50 items-center justify-center p-8">
-        <div className="relative w-full h-full flex items-center justify-center">
-          <svg
-            className="w-full h-full max-w-sm max-h-sm text-amber-100"
-            viewBox="0 0 400 400"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Decorative illustration for the right side */}
-            <circle cx="200" cy="200" r="150" fill="currentColor" opacity="0.1" />
-            <path
-              d="M150 150 Q200 100, 250 150 T250 250 Q200 300, 150 250 Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="none"
-              opacity="0.3"
-            />
-            <circle cx="200" cy="200" r="40" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.5" />
-            <path
-              d="M170 200 L230 200 M200 170 L200 230"
-              stroke="currentColor"
-              strokeWidth="2"
-              opacity="0.4"
-            />
-            {/* Handwriting illustration */}
-            <path
-              d="M100 120 Q120 100, 140 110 T180 120"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              fill="none"
-              opacity="0.6"
-            />
-            <path
-              d="M110 280 Q150 260, 190 290"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              fill="none"
-              opacity="0.5"
-            />
-            <path
-              d="M250 140 Q280 160, 300 140"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="none"
-              opacity="0.4"
-            />
-          </svg>
+      {/* Right side - Living Ledger */}
+      <div className="hidden lg:flex flex-1 bg-[#fef9e7] items-center justify-center p-8 lg:p-20 min-h-screen">
+        <div className="ledger-stage w-full max-w-[460px]">
+          <PapyrLedgerAnimation mode="signin" />
+          <p className="ledger-caption mt-6 text-center">Your business, simply written.</p>
         </div>
       </div>
     </div>
