@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CellContent } from './CellContent';
 import type { LedgerConfig, LedgerCellData } from '@/types/ledger';
@@ -195,10 +195,10 @@ describe('CellContent', () => {
         />
       );
 
-      // Should have SVG for ink indicator
-      const svgs = container.querySelectorAll('svg');
-      expect(svgs.length).toBe(1);
-      expect(svgs[0].getAttribute('aria-label')).toBe('Unrecognized handwriting');
+      // Should have "retry" text for ink indicator
+      const retryText = container.querySelector('span[aria-label="Unrecognized handwriting"]');
+      expect(retryText).toBeInTheDocument();
+      expect(retryText?.textContent).toBe('retry');
     });
   });
 

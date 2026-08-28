@@ -60,7 +60,7 @@ describe('computeStrokesBounds', () => {
       color: '#000000',
       size: 'fine',
       segments: [
-        { p0: { x: 5, y: 10 }, p1: { x: 50, y: 60 }, p2: { x: 80, y: 90 }, p3: { x: 120, y: 110 }, width: 2 },
+        { p0: [5, 10], p1: [50, 60], p2: [80, 90], p3: [120, 110], widthStart: 2, widthEnd: 2, pressureStart: 0.5, pressureEnd: 0.5 },
       ],
       createdAt: Date.now(),
       bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 }, // Invalid bounds (all zeros)

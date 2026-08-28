@@ -410,7 +410,8 @@ export function useLedgerWorkspace({
   // Set date for a cell from calendar picker
   const setCellDate = useCallback((cellId: string, date: Date) => {
     // Store as ISO format (YYYY-MM-DD) for consistency
-    const formattedDate = date.toISOString().split('T')[0];
+    // Use local date components to avoid timezone shift bug
+    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
     setCells(prevCells => ({
       ...prevCells,
@@ -423,6 +424,18 @@ export function useLedgerWorkspace({
 
     // Close picker after selection
     setCalendarPickerCell(null);
+  }, []);
+
+  // Set cell value from typed input (keyboard entry)
+  const setCellValue = useCallback((cellId: string, value: string, contentType: LedgerCellData['content_type'] = 'text') => {
+    setCells(prevCells => ({
+      ...prevCells,
+      [cellId]: {
+        cellId,
+        value,
+        content_type: contentType,
+      },
+    }));
   }, []);
 
   return {
@@ -453,6 +466,9 @@ export function useLedgerWorkspace({
     openCalendarPicker,
     closeCalendarPicker,
     setCellDate,
+
+    // Cell editing
+    setCellValue,
 
     // Pointer handlers
     handlePointerDown,

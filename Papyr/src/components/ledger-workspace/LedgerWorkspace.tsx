@@ -7,8 +7,9 @@ import { CellHighlights } from '@/components/ledger-workspace/CellHighlights';
 import { CellContent } from '@/components/ledger-workspace/CellContent';
 import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
 import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
+import { EditableCell } from '@/components/ledger-workspace/EditableCell';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
-import type { LedgerPageContent, CellCoordinates } from '@/types/ledger';
+import type { LedgerPageContent, CellCoordinates, LedgerCellData } from '@/types/ledger';
 import { getLedgerContentDimensions } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
 
@@ -82,6 +83,7 @@ export function LedgerWorkspace({
     handlePointerMove,
     handlePointerUp,
     handlePointerLeave,
+  setCellValue,
   } = useLedgerWorkspace({
     bookId,
     pageId,
@@ -166,13 +168,19 @@ export function LedgerWorkspace({
       {/* Scrollable Ledger Workspace */}
       <div
         ref={scrollContainerRef}
-        className="relative w-full min-h-full overflow-auto md:pr-20"
+        className="relative w-full h-full overflow-auto md:pr-20"
+        style={{
+          // On mobile, account for header height by using viewport units
+          // The parent (BookLedgerPage) has header (h-14 = 56px) + flex-1 for this container
+          // So this container should be 100% of the flex-1 space
+        }}
       >
         {/*
           Content wrapper with min-width 100% and width max-content to ensure
           it fills the viewport horizontally while allowing horizontal scroll
           when ledger content is wider than viewport. Height is fixed to ledger
           content height to prevent vertical stretching.
+          On mobile, we cap the height to the available viewport to prevent overflow.
         */}
         <div
           className="relative border border-gray-300 rounded-lg bg-white"
@@ -182,6 +190,8 @@ export function LedgerWorkspace({
             minWidth: '100%',
             width: 'max-content',
             height: `${contentDimensions.height}px`,
+            // On mobile, allow the content to be scrolled if taller than viewport
+            // The scroll container handles the overflow
           }}
         >
           {/* Canvas layers */}
@@ -235,6 +245,13 @@ export function LedgerWorkspace({
                 selectCell(null);
               }
             }}
+            onCellDoubleClick={(columnIndex, rowIndex) => {
+              // Double-click on any cell (including date columns) starts text editing
+              const coords: CellCoordinates = { columnIndex, rowIndex };
+              if (selectedCell && selectedCell.columnIndex === columnIndex && selectedCell.rowIndex === rowIndex) {
+                // Cell is already selected, editing will be triggered by EditableCell's double-click handler
+              }
+            }}
           />
 
           {/* Calendar Picker for date cells */}
@@ -251,6 +268,16 @@ export function LedgerWorkspace({
               scrollContainerRef={scrollContainerRef}
             />
           )}
+
+          {/* Inline text editor for cell editing (double-click or Enter/F2) */}
+          <EditableCell
+            ledgerConfig={ledgerConfig}
+            cells={cells}
+            selectedCell={selectedCell}
+            onCellValueChange={setCellValue}
+            scrollContainerRef={scrollContainerRef}
+            isVisible={!calendarPickerCell}
+          />
         </div>
       </div>
 

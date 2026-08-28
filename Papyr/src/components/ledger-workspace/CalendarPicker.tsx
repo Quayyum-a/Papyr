@@ -35,7 +35,18 @@ export function CalendarPicker({
       const cellId = getCellId(selectedCell);
       const cellData = cells[cellId];
       if (cellData?.value) {
-        const parsed = new Date(cellData.value);
+        // Parse YYYY-MM-DD string as local date to avoid timezone shift
+        const dateMatch = cellData.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        let parsed: Date;
+        if (dateMatch) {
+          const year = parseInt(dateMatch[1], 10);
+          const month = parseInt(dateMatch[2], 10) - 1; // 0-indexed
+          const day = parseInt(dateMatch[3], 10);
+          parsed = new Date(year, month, day);
+        } else {
+          // Fallback for any other format
+          parsed = new Date(cellData.value);
+        }
         if (!isNaN(parsed.getTime())) {
           setSelectedDate(parsed);
           setCurrentMonth(parsed);

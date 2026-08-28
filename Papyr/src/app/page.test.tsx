@@ -70,19 +70,21 @@ describe('LandingPage', () => {
 
     it('should render logo', () => {
       render(<LandingPage />);
-      expect(screen.getByAltText('Papyr Logo')).toBeVisible();
+      // PapyrLogo mock renders with data-testid="papyr-logo"
+      expect(screen.getByTestId('papyr-logo')).toBeInTheDocument();
     });
 
-    it('should render signup link', () => {
+    it('should render signup link (Start Your Digital Ledger)', () => {
       render(<LandingPage />);
-      expect(screen.getByRole('link', { name: /create one/i })).toBeVisible();
+      expect(screen.getByRole('link', { name: /Start Your Digital Ledger/i })).toBeVisible();
     });
   });
 
   describe('Form Validation', () => {
     it('should render without errors', () => {
       render(<LandingPage />);
-      expect(screen.getByText('Your traditional ledger, evolved into a digital handwritten record')).toBeInTheDocument();
+      // Heading includes period at the end
+      expect(screen.getByText('Your traditional ledger, evolved into a digital handwritten record.')).toBeInTheDocument();
     });
   });
 
@@ -102,10 +104,8 @@ describe('LandingPage', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
-    it('should have focus visible on inputs', () => {
-      render(<LandingPage />);
-      const emailInput = screen.getByLabelText(/email/i);
-      expect(emailInput).toHaveClass('focus:');
-    });
+    // Landing page has no email input - it's a marketing page with CTA buttons only
+    // Landing page has no form inputs - it's a marketing page with CTA buttons only
+    // Focus visible styles are tested on actual form pages (e.g., signup form)
   });
 });

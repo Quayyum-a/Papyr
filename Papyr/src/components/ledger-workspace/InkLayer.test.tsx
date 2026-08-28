@@ -41,11 +41,14 @@ describe('InkLayer', () => {
     size: 'fine',
     segments: [
       {
-        p0: { x: 10, y: 60 },
-        p1: { x: 50, y: 70 },
-        p2: { x: 90, y: 80 },
-        p3: { x: 110, y: 90 },
-        width: 2,
+        p0: [10, 60],
+        p1: [50, 70],
+        p2: [90, 80],
+        p3: [110, 90],
+        widthStart: 2,
+        widthEnd: 2,
+        pressureStart: 0.5,
+        pressureEnd: 0.5,
       },
     ],
     createdAt: Date.now(),
@@ -65,11 +68,14 @@ describe('InkLayer', () => {
         size: 'fine',
         segments: [
           {
-            p0: { x: 10, y: 60 }, // Inside col-0, row-0
-            p1: { x: 50, y: 70 },
-            p2: { x: 150, y: 80 }, // Extends outside col-0 bounds (width 120)
-            p3: { x: 200, y: 90 },
-            width: 2,
+            p0: [10, 60], // Inside col-0, row-0
+            p1: [50, 70],
+            p2: [150, 80], // Extends outside col-0 bounds (width 120)
+            p3: [200, 90],
+            widthStart: 2,
+            widthEnd: 2,
+            pressureStart: 0.5,
+            pressureEnd: 0.5,
           },
         ],
         createdAt: Date.now(),
@@ -84,11 +90,14 @@ describe('InkLayer', () => {
         size: 'fine',
         segments: [
           {
-            p0: { x: 130, y: 60 }, // Inside col-1, row-0
-            p1: { x: 200, y: 70 },
-            p2: { x: 250, y: 80 },
-            p3: { x: 300, y: 90 },
-            width: 2,
+            p0: [130, 60], // Inside col-1, row-0
+            p1: [200, 70],
+            p2: [250, 80],
+            p3: [300, 90],
+            widthStart: 2,
+            widthEnd: 2,
+            pressureStart: 0.5,
+            pressureEnd: 0.5,
           },
         ],
         createdAt: Date.now(),
@@ -131,11 +140,14 @@ describe('InkLayer', () => {
         size: 'fine',
         segments: [
           {
-            p0: { x: 10, y: 60 },
-            p1: { x: 50, y: 70 },
-            p2: { x: 90, y: 80 },
-            p3: { x: 110, y: 90 },
-            width: 2,
+            p0: [10, 60],
+            p1: [50, 70],
+            p2: [90, 80],
+            p3: [110, 90],
+            widthStart: 2,
+            widthEnd: 2,
+            pressureStart: 0.5,
+            pressureEnd: 0.5,
           },
         ],
         createdAt: Date.now(),
@@ -175,11 +187,14 @@ describe('InkLayer', () => {
         size: 'fine',
         segments: [
           {
-            p0: { x: 10, y: 60 },
-            p1: { x: 50, y: 70 },
-            p2: { x: 90, y: 80 },
-            p3: { x: 110, y: 90 },
-            width: 2,
+            p0: [10, 60],
+            p1: [50, 70],
+            p2: [90, 80],
+            p3: [110, 90],
+            widthStart: 2,
+            widthEnd: 2,
+            pressureStart: 0.5,
+            pressureEnd: 0.5,
           },
         ],
         createdAt: Date.now(),

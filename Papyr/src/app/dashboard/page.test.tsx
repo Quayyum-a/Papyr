@@ -2,19 +2,23 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './page';
 
-const { push, getBooks, signOut } = vi.hoisted(() => ({
+// Use vi.hoisted to create mocks before vi.mock factories run
+const { push, signOut, getBooks } = vi.hoisted(() => ({
   push: vi.fn(),
-  getBooks: vi.fn(),
   signOut: vi.fn(),
+  getBooks: vi.fn(),
 }));
+
+// Stable user reference to prevent infinite re-renders
+const mockUser = {
+  id: 'user-1',
+  email: 'ariyo@example.com',
+  display_name: 'Ariyo Quayyum',
+};
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
-    user: {
-      id: 'user-1',
-      email: 'ariyo@example.com',
-      display_name: 'Ariyo Quayyum',
-    },
+    user: mockUser,
     loading: false,
     error: null,
     signOut,
@@ -34,6 +38,7 @@ vi.mock('@/components/PapyrLogo', () => ({
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for getBooks
     getBooks.mockResolvedValue({
       data: [
         {
@@ -55,10 +60,16 @@ describe('DashboardPage', () => {
     cleanup();
   });
 
+  // Helper to wait for books to load (booksLoading becomes false)
+  const waitForBooksLoaded = async () => {
+    // Wait for "Your Books" section to appear (only renders after loading)
+    await screen.findByRole('button', { name: /Your Books/i });
+  };
+
   it('renders real recent activity and omits dashboard stat boxes', async () => {
     render(<DashboardPage />);
 
-    await waitFor(() => expect(getBooks).toHaveBeenCalled());
+    await waitForBooksLoaded();
     expect(await screen.findByText(/Created Repair Log/i)).toBeInTheDocument();
     expect(screen.queryByText(/^Books$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Pages$/i)).not.toBeInTheDocument();
@@ -67,9 +78,12 @@ describe('DashboardPage', () => {
   });
 
   it('shows a create-book message when My Books is clicked with no books', async () => {
+    // Override mock BEFORE render
     getBooks.mockResolvedValue({ data: [], error: null });
     render(<DashboardPage />);
 
+    // Wait for loading to complete - check for "Your Books" button
+    await waitForBooksLoaded();
     const booksCard = await screen.findByRole('button', { name: /Your Books/i });
     fireEvent.click(booksCard);
 
@@ -80,6 +94,7 @@ describe('DashboardPage', () => {
   it('opens the books page when My Books is clicked with existing books', async () => {
     render(<DashboardPage />);
 
+    await waitForBooksLoaded();
     fireEvent.click(await screen.findByRole('button', { name: /Your Books/i }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard/books'));

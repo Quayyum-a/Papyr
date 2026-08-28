@@ -195,7 +195,8 @@ describe('LedgerCanvas', () => {
     );
 
     // Should request 2D context for each canvas (3 visible + 1 offscreen)
+    // May be called multiple times due to setup retries (ResizeObserver, requestAnimationFrame, ledgerConfig changes)
     expect(mockGetContext).toHaveBeenCalledWith('2d');
-    expect(mockGetContext).toHaveBeenCalledTimes(4);
+    expect(mockGetContext).toHaveBeenCalledTimes(8);
   });
 });

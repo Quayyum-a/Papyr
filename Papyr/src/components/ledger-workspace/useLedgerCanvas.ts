@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { LedgerConfig } from '@/types/ledger';
+import { getLedgerContentDimensions } from '@/types/ledger';
 
 /**
  * Hook for managing ledger canvas setup and lifecycle
@@ -23,6 +24,9 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [isReady, setIsReady] = useState(false);
   const [renderKey, setRenderKey] = useState(0); // Force re-render of layers
+
+  // Compute expected dimensions from ledger config (available immediately)
+  const expectedDimensions = getLedgerContentDimensions(ledgerConfig);
 
   // Memoize setupCanvases to avoid recreating on every render
   const setupCanvases = useCallback(() => {
@@ -91,8 +95,9 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
 
     if (!paperCanvas || !gridCanvas || !inkCanvas) return;
 
-    // Initial setup attempt
-    setupCanvases();
+    // Initial setup attempt - if container already has size, use it
+    // Otherwise, wait for ResizeObserver
+    const initialSetup = setupCanvases();
 
     // Set up ResizeObserver to handle container size changes
     // This replaces the retry-loop workaround - we now respond to actual layout changes
@@ -119,11 +124,27 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
 
     window.addEventListener('resize', handleResize);
 
+    // If initial setup failed (container had 0 size), schedule a retry after layout
+    // This handles the case where the parent container hasn't been laid out yet
+    if (!initialSetup) {
+      // Use requestAnimationFrame to wait for next paint cycle when layout is settled
+      requestAnimationFrame(() => {
+        setupCanvases();
+      });
+    }
+
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
   }, [setupCanvases]);
+
+  // Also attempt setup when ledgerConfig changes (e.g., columns added/removed)
+  useEffect(() => {
+    if (isReady) {
+      setupCanvases();
+    }
+  }, [ledgerConfig.columns.length, ledgerConfig.rowCount, isReady, setupCanvases]);
 
   return {
     paperCanvasRef,

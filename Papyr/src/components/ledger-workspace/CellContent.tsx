@@ -73,13 +73,31 @@ export function CellContent({
               // Format date columns consistently (MMM DD, YYYY)
               let displayValue = cellData.value;
               if (column.type === 'date') {
-                const parsedDate = new Date(cellData.value);
-                if (!isNaN(parsedDate.getTime())) {
-                  displayValue = parsedDate.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  });
+                // Parse YYYY-MM-DD string as local date to avoid timezone shift
+                // new Date('YYYY-MM-DD') parses as UTC, causing off-by-one in timezones ahead of UTC
+                const dateMatch = cellData.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (dateMatch) {
+                  const year = parseInt(dateMatch[1], 10);
+                  const month = parseInt(dateMatch[2], 10) - 1; // 0-indexed
+                  const day = parseInt(dateMatch[3], 10);
+                  const parsedDate = new Date(year, month, day);
+                  if (!isNaN(parsedDate.getTime())) {
+                    displayValue = parsedDate.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    });
+                  }
+                } else {
+                  // Fallback for any other format
+                  const parsedDate = new Date(cellData.value);
+                  if (!isNaN(parsedDate.getTime())) {
+                    displayValue = parsedDate.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    });
+                  }
                 }
               }
               return (
@@ -98,7 +116,7 @@ export function CellContent({
               );
             }
 
-            // Render failed/empty recognition indicator (ink icon)
+            // Render failed/empty recognition indicator
             if (cellData?.content_type === 'ink' && cellData.value === '') {
               return (
                 <div
@@ -107,20 +125,12 @@ export function CellContent({
                   style={{ width: column.width }}
                   title="Unrecognized handwriting - tap to retry"
                 >
-                  <svg
-                    className="w-5 h-5 text-gray-400 opacity-60"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  <span
+                    className="text-xs text-gray-400 opacity-60 select-none"
                     aria-label="Unrecognized handwriting"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 18"
-                    />
-                  </svg>
+                    retry
+                  </span>
                 </div>
               );
             }

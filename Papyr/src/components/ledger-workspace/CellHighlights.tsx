@@ -8,6 +8,7 @@ interface CellHighlightsProps {
   selectedCell: CellCoordinates | null;
   recognizingCells?: Set<string>;
   onCellSelect: (coords: CellCoordinates | null) => void;
+  onCellDoubleClick?: (columnIndex: number, rowIndex: number) => void;
   className?: string;
 }
 
@@ -21,6 +22,7 @@ export function CellHighlights({
   selectedCell,
   recognizingCells = new Set(),
   onCellSelect,
+  onCellDoubleClick,
   className = '',
 }: CellHighlightsProps) {
   const { columns, rowCount } = ledgerConfig;
@@ -242,15 +244,16 @@ export function CellHighlights({
                 ref={(el) => { if (el) cellRefsRef.current.set(cellKey, el); }}
                 className={`relative cursor-pointer transition-all duration-100 ease-out ${
                   isSelected
-                    ? 'pointer-events-none'  // Selected cell - no background color, selection is on canvas layer
-                    : 'hover:bg-gray-50/50 pointer-events-auto'  // Very subtle hover
-                } ${isFocused && !isSelected ? 'ring-2 ring-blue-500 ring-inset' : isFocused && isSelected ? 'ring-1 ring-blue-300 ring-inset' : ''}`}
+                    ? 'pointer-events-none ring-2 ring-blue-500/70 ring-inset'  // Selected: visible ring, no background
+                    : 'hover:bg-black/5 pointer-events-auto'  // Very subtle hover tint (5% black)
+                } ${isFocused && !isSelected ? 'ring-2 ring-blue-500/50 ring-inset' : ''}`}
                 style={{
                   width: column.width,
                   height: LEDGER_CONSTANTS.ROW_HEIGHT,
                   outline: 'none',
                 }}
                 onClick={() => handleCellClick(columnIndex, rowIndex)}
+                onDoubleClick={() => onCellDoubleClick?.(columnIndex, rowIndex)}
                 onKeyDown={(e) => handleCellKeyDown(e, columnIndex, rowIndex)}
                 role="gridcell"
                 tabIndex={isFocused || isSelected ? 0 : -1}

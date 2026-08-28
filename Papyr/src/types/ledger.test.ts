@@ -178,7 +178,7 @@ describe('createDefaultLedgerPageContent', () => {
     const content = createDefaultLedgerPageContent();
 
     expect(content.cells).toBeDefined();
-    expect(Object.keys(content.cells).length).toBe(0);
+    expect(Object.keys(content.cells || {}).length).toBe(0);
   });
 
   it('should have correct ledger config with column IDs', () => {

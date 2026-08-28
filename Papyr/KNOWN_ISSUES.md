@@ -26,7 +26,7 @@ Each issue follows this format:
 #### KI-007: Ledger Canvas Zero-Dimension Regression
 - **ID**: KI-007
 - **Title**: Ledger canvas renders with 0×0 dimensions on initial load
-- **Status**: Open
+- **Status**: Closed
 - **Priority**: Critical
 - **Component**: Ledger Workspace / Canvas
 - **Description**: The `LedgerCanvas` component initializes with zero width/height, causing the three-layer canvas system (PaperLayer, GridLayer, InkLayer) to not render. The canvas container has correct dimensions in DOM but the internal canvas elements are not sized properly.
@@ -37,53 +37,56 @@ Each issue follows this format:
   4. Window resize sometimes triggers correct sizing
 - **Impact**: Ledger workspace completely unusable; users cannot write in cells
 - **Workaround**: Manual window resize sometimes fixes it; not reliable
+- **Resolution**: Fixed in useLedgerCanvas.ts by adding requestAnimationFrame fallback when initial setup fails due to layout timing, and adding dependency on ledgerConfig changes to re-setup canvases when columns/rows change. Added regression test.
 - **Assignee**: Drawing Engine Team
 - **Due Date**: 2026-08-20
+- **Date Resolved**: 2026-08-28
 - **Tags**: regression, canvas, ledger, critical
 
-#### KI-008: Handwriting Recognition Not Implemented
+#### KI-008: Handwriting Recognition - MyScript Implementation Complete
 - **ID**: KI-008
-- **Title**: OpenRouter-based handwriting recognition endpoint not built
-- **Status**: Open
+- **Title**: MyScript iink handwriting recognition implemented (replaces OpenRouter/Google Cloud Vision)
+- **Status**: Closed
 - **Priority**: High
 - **Component**: Handwriting Recognition / API
-- **Description**: The `/api/ink/recognize-openrouter` route needs to be implemented to replace the abandoned Google Cloud Vision approach. Should accept base64 PNG image data and column label, return recognized text with confidence.
-- **Steps to Reproduce**: N/A — feature not built
-- **Impact**: Core P301 feature missing; users cannot convert handwriting to text
-- **Workaround**: None — manual entry only
+- **Description**: MyScript iink REST API integration implemented at `/api/ink/recognize`. Uses server-side credentials (MYSCRIPT_APPLICATION_KEY, MYSCRIPT_HMAC_KEY) for secure recognition. Accepts stroke data (not images) for more accurate recognition. Fallback to OpenRouter available.
+- **Steps to Reproduce**: N/A — feature implemented
+- **Impact**: Core P301 feature complete; users can convert handwriting to text via MyScript
 - **Assignee**: Backend Team
 - **Due Date**: 2026-08-25
-- **Tags**: feature, handwriting, recognition, openrouter, api
+- **Date Resolved**: 2026-08-28
+- **Tags**: feature, handwriting, recognition, myscript, api
+- **Notes**: OpenRouter and Google Cloud Vision approaches documented as alternatives in .env.local.example but MyScript is primary
 
-#### KI-009: Recognized Text Storage Gap
+#### KI-009: Recognized Text Storage Gap - RESOLVED
 - **ID**: KI-009
-- **Title**: Recognized text from handwriting recognition not persisted to cell content
-- **Status**: Open
+- **Title**: Recognized text from handwriting recognition persisted to cell content
+- **Status**: Closed
 - **Priority**: High
 - **Component**: Ledger Workspace / Data Layer
-- **Description**: When handwriting recognition is implemented, the recognized text needs to be written back to the cell's `content_data` (for `content_type: 'text'`) or stored alongside strokes. Currently no pipeline exists for this.
-- **Steps to Reproduce**: N/A — depends on KI-008
-- **Impact**: Even if recognition works, results won't be saved
-- **Workaround**: None
+- **Description**: MyScript recognition results are now stored in cell data via RecognitionService.onCellStateChange callback. Additionally, typed text entry (keyboard input) is supported via setCellValue in useLedgerWorkspace, providing a reliable text entry path without OCR dependency.
+- **Resolution**: Recognition pipeline stores results to cells state; typed entry via EditableCell component (double-click or Enter/F2 on selected cell) bypasses OCR entirely.
 - **Assignee**: Backend Team
 - **Due Date**: 2026-08-25
-- **Tags**: data, persistence, handwriting, ledger
+- **Date Resolved**: 2026-08-28
+- **Tags**: data, persistence, handwriting, ledger, keyboard-entry
 
-#### KI-010: Mobile Ledger Workspace Rendering
+#### KI-010: Mobile Ledger Workspace Rendering - RESOLVED
 - **ID**: KI-010
-- **Title**: Ledger canvas sizing/rendering broken on mobile viewport
-- **Status**: Open
+- **Title**: Ledger canvas sizing/rendering fixed for mobile viewport
+- **Status**: Closed
 - **Priority**: High
 - **Component**: Ledger Workspace / Mobile
-- **Description**: The ledger workspace canvas does not adapt correctly to mobile viewport. Canvas dimensions don't account for toolbar, header, and overlay elements, causing overflow or clipping.
-- **Steps to Reproduce**:
-  1. Open ledger workspace on mobile device or Chrome DevTools device toolbar
-  2. Observe canvas extends beyond viewport or is clipped
-  3. Toolbar/column headers may overlap canvas
-- **Impact**: Ledger workspace unusable on mobile (primary target for small business users)
-- **Workaround**: None
+- **Description**: The ledger workspace canvas now correctly adapts to mobile viewport. Fixed scroll container to use h-full (not min-h-full) to properly fill available space after header. Content wrapper height is based on ledger content dimensions but scroll container handles overflow. Mobile toolbar is floating (doesn't consume layout space).
+- **Steps to Verify**:
+  1. Open ledger workspace on mobile device or Chrome DevTools device toolbar (360px, 390px widths)
+  2. Observe canvas fits within viewport without clipping
+  3. Horizontal scroll works for wide ledgers
+  4. Vertical scroll works for tall ledgers
+  5. Header and floating toolbar don't overlap canvas
 - **Assignee**: Frontend Team
 - **Due Date**: 2026-08-22
+- **Date Resolved**: 2026-08-28
 - **Tags**: mobile, canvas, responsive, ledger
 
 ---

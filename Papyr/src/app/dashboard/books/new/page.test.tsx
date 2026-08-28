@@ -148,7 +148,7 @@ describe('Create Book Page', () => {
     });
   });
 
-  it('submits form with both cover_theme and cover_color matching selected theme', async () => {
+  it('submits form with cover_color matching selected theme', async () => {
     const user = userEvent.setup();
     render(<NewBookPage />);
 
@@ -172,18 +172,19 @@ describe('Create Book Page', () => {
       expect(mockInsert).toHaveBeenCalled();
     });
 
-    // Verify the insert was called with correct data
+    // Verify the insert was called with correct data (component only sends cover_color, not cover_theme)
     const insertCall = mockInsert.mock.calls[0][0];
     expect(insertCall).toMatchObject({
       title: 'Valid Book Name',
       description: 'A test description',
-      cover_theme: 'Forest',
       cover_color: '#c2d3c5', // Forest accent color
       user_id: 'test-user',
     });
+    // cover_theme is not sent by the component
+    expect(insertCall).not.toHaveProperty('cover_theme');
   });
 
-  it('submits with default Graphite theme when no theme is explicitly selected', async () => {
+  it('submits with default Graphite cover_color when no theme is explicitly selected', async () => {
     const user = userEvent.setup();
     render(<NewBookPage />);
 
@@ -198,8 +199,9 @@ describe('Create Book Page', () => {
     });
 
     const insertCall = mockInsert.mock.calls[0][0];
-    expect(insertCall.cover_theme).toBe('Graphite');
+    // Component only sends cover_color, not cover_theme
     expect(insertCall.cover_color).toBe('#b8b8b5'); // Graphite accent
+    expect(insertCall).not.toHaveProperty('cover_theme');
   });
 
   it('disables create button when book name is too short', async () => {

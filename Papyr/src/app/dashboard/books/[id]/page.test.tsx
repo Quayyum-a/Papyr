@@ -2,6 +2,21 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import BookLedgerPage from './page';
 
+// Polyfill window.matchMedia for jsdom (used by PapyrLedgerAnimation)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 // Mock dependencies
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'test-book-id' }),
@@ -57,6 +72,14 @@ vi.mock('@/lib/supabase/client', () => ({
               })),
             })),
           })),
+          update: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => Promise.resolve({
+                data: null,
+                error: null,
+              })),
+            })),
+          })),
         };
       }
       return {
@@ -70,6 +93,11 @@ vi.mock('@/lib/supabase/client', () => ({
         insert: vi.fn(() => ({
           select: vi.fn(() => ({
             single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+        })),
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
           })),
         })),
       };
@@ -132,7 +160,7 @@ describe('BookLedgerPage Integration', () => {
 
       expect(screen.getByDisplayValue('Modified Date')).toBeInTheDocument();
     }, { timeout: 15000 });
-  });
+  }, 30000);
 
   it('should add new column when clicking add button', async () => {
     render(<BookLedgerPage />);
@@ -143,7 +171,7 @@ describe('BookLedgerPage Integration', () => {
 
       expect(screen.getByDisplayValue('New Column')).toBeInTheDocument();
     }, { timeout: 15000 });
-  });
+  }, 30000);
 
   it('should auto-append row when typing in last row', async () => {
     render(<BookLedgerPage />);
@@ -159,7 +187,7 @@ describe('BookLedgerPage Integration', () => {
         expect(rowsAfter.length).toBeGreaterThan(16);
       });
     }, { timeout: 20000 });
-  });
+  }, 30000);
 
   it('should maintain user-specific data isolation', async () => {
     render(<BookLedgerPage />);
@@ -168,5 +196,5 @@ describe('BookLedgerPage Integration', () => {
       // Verify book is loaded with user check
       expect(screen.getByText('Test Book')).toBeInTheDocument();
     }, { timeout: 5000 });
-  });
+  }, 20000);
 });

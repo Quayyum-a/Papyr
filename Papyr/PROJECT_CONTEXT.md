@@ -1,10 +1,10 @@
 # PROJECT CONTEXT
 
 ## Current Sprint
-Sprint 2 (P301): Ledger Workspace & Handwriting Recognition — IN PROGRESS
+Sprint 2 (P301): Ledger Workspace & Handwriting Recognition — COMPLETE
 
 ## Current Milestone
-Ledger workspace core functional; handwriting recognition (OpenRouter) and mobile ledger rendering are open work.
+Ledger workspace core functional; handwriting recognition (MyScript iink) implemented; mobile ledger rendering fixed; typed text entry added.
 
 ## Completed Sprints
 
@@ -26,16 +26,21 @@ Ledger workspace core functional; handwriting recognition (OpenRouter) and mobil
 - Profile page with display name editing
 - Fixed: signup email verification redirect (was pointing to localhost)
 
-### Sprint 2 (P301): Ledger Workspace — IN PROGRESS 🚧 (Started 2026-08-07)
+### Sprint 2 (P301): Ledger Workspace — COMPLETE ✅ (Completed 2026-08-28)
 - Three-layer canvas system (PaperLayer, GridLayer, InkLayer)
 - Cell-bound ink strokes with `cell_id` field
 - Editable column headers, cell selection/highlights
 - Column management (add/remove/reorder)
 - Route: `/dashboard/books/[id]/ledger`
 - Supabase integration (load/save pages, debounced save)
-- **Open regression**: canvas renders 0×0 on initial load
-- **Not yet implemented**: OpenRouter handwriting recognition (`/api/ink/recognize-openrouter`)
-- **Not yet implemented**: recognized text persistence to cells
+- **Fixed**: canvas renders 0×0 on initial load (KI-007) — requestAnimationFrame fallback + ResizeObserver
+- **Implemented**: MyScript iink handwriting recognition (`/api/ink/recognize`) — primary vendor
+- **Implemented**: Recognized text persistence to cells via RecognitionService
+- **Added**: Typed text entry path (EditableCell component — double-click or Enter/F2 to edit)
+- **Fixed**: Mobile ledger rendering (KI-010) — proper viewport handling
+- **Fixed**: Date picker timezone off-by-one bug (UTC+1/WAT) — local date component parsing
+- **Fixed**: Cell highlight transparency — idle: transparent, hover: subtle tint, selected: ring
+- **Added**: Health check endpoint (`/api/health`) with MyScript credential validation
 
 ## Architecture Summary
 
@@ -88,16 +93,26 @@ Migrations applied:
 | `/api/cells` | Cell content CRUD |
 | `/api/strokes` | Stroke CRUD (cell-bound) |
 | `/api/export/[type]` | Export (png, json, svg) |
-| `/api/health` | Health check |
+| `/api/health` | Health check (includes MyScript credential validation) |
 | `/api/config` | Public config |
+| `/api/ink/recognize` | MyScript handwriting recognition |
 | `/auth/callback` | Supabase email verification |
 
 ## Known Open Issues
-1. **Ledger canvas zero-dimension regression** — canvas renders 0×0 on initial load
-2. **Handwriting recognition not implemented** — OpenRouter route needed
-3. **Recognized text storage gap** — need to persist OCR results to cell content
-4. **Mobile ledger rendering** — canvas sizing issues on mobile viewport
-5. **Low-end device performance** — Sprint 0 carryover (KI-001)
+1. **Low-end device performance** — Sprint 0 carryover (KI-001)
+2. **Pressure sensitivity inconsistency** — Sprint 0 carryover (KI-002)
+3. **Touch palm rejection false positives** — Sprint 0 carryover (KI-003)
+4. **Local storage quota exceeded risk** — Sprint 0 carryover (KI-004)
+5. **Service worker registration failure on older browsers** — Sprint 0 carryover (KI-005)
+
+## Resolved in Sprint 2 (P301)
+- ✅ Ledger canvas zero-dimension regression (KI-007)
+- ✅ Handwriting recognition implemented (MyScript iink, KI-008)
+- ✅ Recognized text storage gap (KI-009)
+- ✅ Mobile ledger rendering (KI-010)
+- ✅ Date picker timezone off-by-one bug
+- ✅ Cell highlight transparency
+- ✅ Typed text entry for cells (keyboard input)
 
 ## Folder Structure
 ```
@@ -126,4 +141,4 @@ Migrations applied:
 
 ---
 
-*Last Updated: 2026-08-16*
+*Last Updated: 2026-08-28*
