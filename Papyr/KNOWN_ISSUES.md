@@ -89,6 +89,25 @@ Each issue follows this format:
 - **Date Resolved**: 2026-08-28
 - **Tags**: mobile, canvas, responsive, ledger
 
+#### KI-011: Calendar Picker Flicker and Missing Year/Month Navigation - RESOLVED
+- **ID**: KI-011
+- **Title**: Calendar picker flickers/resets while navigating and lacks fast month/year jump
+- **Status**: Closed
+- **Priority**: High
+- **Component**: Ledger Workspace / CalendarPicker
+- **Description**: Two issues fixed:
+  1. **Flicker/Reset**: The useEffect initializing selectedDate and currentMonth depended on [selectedCell, cells]. Since `cells` gets a new reference on every cell edit anywhere in the sheet, the picker would re-initialize and reset the user's in-progress navigation/selection on every keystroke or ink update in any other cell while the picker was open. Fixed by tracking the initialized cellId in a ref and only re-initializing when the selected cell changes to a different cell, or when that specific cell's value changes externally.
+  2. **No Fast Navigation**: The header only had Prev/Next month arrows, requiring 36+ clicks to reach a date 3 years away. Added standard drill-down navigation (day view → month view → year view): click the month/year label in day view to open a 12-month grid; click a month to return to day view. In month view, click the year label to open a 12-year grid (±5 years from current); click a year to open month view for that year. Prev/Next decade arrows in year view, Prev/Next year arrows in month view. Escape key navigates back up one level. No new dependencies — plain React state and existing Tailwind classes.
+- **Steps to Verify**:
+  1. Open picker on empty cell, navigate forward 6 months via arrows, click a day — confirm picker does NOT reset to today/original month during navigation
+  2. Open picker on cell with date 3 years ago — reach it in ~4 clicks (year label → year grid → click year → month grid → click month → day) instead of 36
+  3. Confirm picked date stored and displayed as "Aug 28, 2026" format with no timezone shift
+- **Resolution**: Two commits on fix/calendar-picker-flicker-and-navigation branch: flicker fix (e220e11) then drill-down navigation (e301daa)
+- **Assignee**: Frontend Team
+- **Due Date**: 2026-08-29
+- **Date Resolved**: 2026-08-29
+- **Tags**: bug, usability, calendar, date-picker, ledger
+
 ---
 
 ### Carried Over from Sprint 0
@@ -281,5 +300,5 @@ When reporting a new issue, please include:
 - Available to all team members via internal wiki
 
 --- 
-*Last Updated: 2026-08-16*
-*Total Open Issues: 8 (KI-001 through KI-005 carried over, KI-007 through KI-010 new)*
+*Last Updated: 2026-08-29*
+*Total Open Issues: 5 (KI-001 through KI-005 carried over; KI-007 through KI-011 resolved)*
