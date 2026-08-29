@@ -43,20 +43,27 @@ Each issue follows this format:
 - **Date Resolved**: 2026-08-28
 - **Tags**: regression, canvas, ledger, critical
 
-#### KI-008: Handwriting Recognition - MyScript Implementation Complete
+#### KI-008: Handwriting Recognition - MyScript REST API Integration Complete
 - **ID**: KI-008
-- **Title**: MyScript iink handwriting recognition implemented (replaces OpenRouter/Google Cloud Vision)
+- **Title**: MyScript iink batch REST API integration implemented at `/api/ink/recognize`
 - **Status**: Closed
 - **Priority**: High
 - **Component**: Handwriting Recognition / API
-- **Description**: MyScript iink REST API integration implemented at `/api/ink/recognize`. Uses server-side credentials (MYSCRIPT_APPLICATION_KEY, MYSCRIPT_HMAC_KEY) for secure recognition. Accepts stroke data (not images) for more accurate recognition. Fallback to OpenRouter available.
-- **Steps to Reproduce**: N/A — feature implemented
-- **Impact**: Core P301 feature complete; users can convert handwriting to text via MyScript
+- **Description**: MyScript Cloud batch REST API v4.0 integration implemented at `/api/ink/recognize`. Uses server-side credentials (MYSCRIPT_APPLICATION_KEY, MYSCRIPT_HMAC_KEY) for secure HMAC-SHA512 authentication. Accepts stroke data (not images) with parallel x/y/t/p arrays per MyScript batch API specification. JIIX export parsed for recognized text with word-level candidates. The integration was verified against the live MyScript API with real strokes.
+- **Steps to Verify**:
+  1. Run `npx tsx scripts/test-myscript-live.ts` with valid MyScript credentials
+  2. Observe successful recognition of test stroke (returns "hope" with alternatives)
+  3. Draw legible word in text cell in running app — confirm recognizedText appears correctly
+- **Resolution**: Rewrote myscript-client.ts to match MyScript's actual batch REST API contract:
+  - Endpoint: POST https://cloud.myscript.com/api/v4.0/iink/batch (no /recognize segment)
+  - HMAC-SHA512 with key = applicationKey + hmacKey concatenated, message = exact request body JSON
+  - Request body with configuration.lang, export.jiix, xDPI/yDPI, contentType, strokeGroups
+  - Response parsing handles both direct JIIX and legacy exports format
 - **Assignee**: Backend Team
-- **Due Date**: 2026-08-25
-- **Date Resolved**: 2026-08-28
-- **Tags**: feature, handwriting, recognition, myscript, api
-- **Notes**: OpenRouter and Google Cloud Vision approaches documented as alternatives in .env.local.example but MyScript is primary
+- **Due Date**: 2026-08-29
+- **Date Resolved**: 2026-08-29
+- **Tags**: feature, handwriting, recognition, myscript, api, rest
+- **Notes**: OpenRouter and Google Cloud Vision approaches removed as alternatives — MyScript is the sole recognition provider. Verification script at scripts/test-myscript-live.ts.
 
 #### KI-009: Recognized Text Storage Gap - RESOLVED
 - **ID**: KI-009
@@ -281,5 +288,5 @@ When reporting a new issue, please include:
 - Available to all team members via internal wiki
 
 --- 
-*Last Updated: 2026-08-16*
-*Total Open Issues: 8 (KI-001 through KI-005 carried over, KI-007 through KI-010 new)*
+*Last Updated: 2026-08-29*
+*Total Open Issues: 5 (KI-001 through KI-005 carried over; KI-007 through KI-011 resolved)*
