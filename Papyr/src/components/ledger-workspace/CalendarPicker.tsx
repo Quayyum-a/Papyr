@@ -28,40 +28,52 @@ export function CalendarPicker({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Track which cell we've initialized for to avoid re-initializing on unrelated cell edits
+  const initializedCellIdRef = useRef<string | null>(null);
 
   // Parse existing cell value if it's a valid date
+  // Only re-run when the selected cell changes, not when the whole cells object changes
   useEffect(() => {
     if (selectedCell) {
       const cellId = getCellId(selectedCell);
-      const cellData = cells[cellId];
-      if (cellData?.value) {
-        // Parse YYYY-MM-DD string as local date to avoid timezone shift
-        const dateMatch = cellData.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-        let parsed: Date;
-        if (dateMatch) {
-          const year = parseInt(dateMatch[1], 10);
-          const month = parseInt(dateMatch[2], 10) - 1; // 0-indexed
-          const day = parseInt(dateMatch[3], 10);
-          parsed = new Date(year, month, day);
+      const cellValue = cells[cellId]?.value;
+
+      // Only initialize if we haven't initialized for this cell yet,
+      // or if the cell's value has changed (external update to this specific cell)
+      if (initializedCellIdRef.current !== cellId || cellValue !== cells[initializedCellIdRef.current]?.value) {
+        if (cellValue) {
+          // Parse YYYY-MM-DD string as local date to avoid timezone shift
+          const dateMatch = cellValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          let parsed: Date;
+          if (dateMatch) {
+            const year = parseInt(dateMatch[1], 10);
+            const month = parseInt(dateMatch[2], 10) - 1; // 0-indexed
+            const day = parseInt(dateMatch[3], 10);
+            parsed = new Date(year, month, day);
+          } else {
+            // Fallback for any other format
+            parsed = new Date(cellValue);
+          }
+          if (!isNaN(parsed.getTime())) {
+            setSelectedDate(parsed);
+            setCurrentMonth(parsed);
+          } else {
+            // Default to today if parsing fails
+            const today = new Date();
+            setSelectedDate(today);
+            setCurrentMonth(today);
+          }
         } else {
-          // Fallback for any other format
-          parsed = new Date(cellData.value);
-        }
-        if (!isNaN(parsed.getTime())) {
-          setSelectedDate(parsed);
-          setCurrentMonth(parsed);
-        } else {
-          // Default to today if parsing fails
+          // Default to today
           const today = new Date();
           setSelectedDate(today);
           setCurrentMonth(today);
         }
-      } else {
-        // Default to today
-        const today = new Date();
-        setSelectedDate(today);
-        setCurrentMonth(today);
+        initializedCellIdRef.current = cellId;
       }
+    } else {
+      // Reset when no cell is selected
+      initializedCellIdRef.current = null;
     }
   }, [selectedCell, cells]);
 
