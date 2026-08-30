@@ -265,11 +265,11 @@ export function CellHighlights({
                 {/* Recognition indicator */}
                 {isRecognizing && (
                   <div
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none bg-blue-50/30"
+                    className="absolute top-0.5 right-0.5 pointer-events-none"
                     aria-label="Recognizing handwriting"
                   >
                     <svg
-                      className="w-5 h-5 text-blue-600 animate-spin"
+                      className="w-3 h-3 text-blue-600 animate-spin"
                       fill="none"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
