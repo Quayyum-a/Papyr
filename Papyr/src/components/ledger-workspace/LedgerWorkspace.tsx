@@ -136,6 +136,7 @@ export function LedgerWorkspace({
 
     // Enter: Start editing focused column header (handled by ColumnHeaders)
     // Arrow keys: Cell navigation (handled by CellHighlights)
+    // Delete/Backspace: Clear selected cell (handled by CellHighlights)
   }, [canUndo, canRedo, undo, redo, selectedCell, clearSelection]);
 
   // Compute ledger content dimensions from config
@@ -194,6 +195,24 @@ export function LedgerWorkspace({
             // The scroll container handles the overflow
           }}
         >
+          {/* Mobile responsive layout: Date column frozen, other columns scrollable */}
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: ledgerConfig.columns.map((col, index) => {
+                if (index === 0 && ledgerConfig.columns[0].type === 'date') {
+                  // Date column: freeze narrow width on mobile
+                  return '80px';
+                }
+                // Other columns: scrollable (auto width for desktop, 120px for mobile)
+                return '120px';
+              }).join(' ')},
+              // On desktop, keep the original column widths
+              '@media (min-width: 768px)': {
+                gridTemplateColumns: ledgerConfig.columns.map(col => `${col.width}px`).join(' '),
+              },
+            }}
+          >
           {/* Canvas layers */}
           <LedgerCanvas
             ledgerConfig={ledgerConfig}
@@ -210,6 +229,73 @@ export function LedgerWorkspace({
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerLeave}
             cells={cells}
+          />
+
+          {/* Cell content overlay - recognized text and failed recognition indicators */}
+          <CellContent
+            ledgerConfig={ledgerConfig}
+            cells={cells}
+            selectedCell={selectedCell}
+            recognizingCells={recognizingCells}
+          />
+
+          {/* Overlay layers */}
+          <ColumnHeaders
+            columns={ledgerConfig.columns}
+            onColumnEdit={editColumn}
+            onColumnAdd={addColumn}
+            onColumnRemove={removeColumn}
+          />
+
+          <CellHighlights
+            ledgerConfig={ledgerConfig}
+            selectedCell={selectedCell}
+            recognizingCells={recognizingCells}
+            onCellSelect={(coords) => {
+              if (coords) {
+                // Check if this is a date column and open calendar picker
+                const column = ledgerConfig.columns[coords.columnIndex];
+                if (column?.type === 'date') {
+                  openCalendarPicker(coords.columnIndex, coords.rowIndex);
+                } else {
+                  selectCell(coords);
+                }
+              } else {
+                selectCell(null);
+              }
+            }}
+            onCellDoubleClick={(columnIndex, rowIndex) => {
+              // Double-click on any cell (including date columns) starts text editing
+              const coords: CellCoordinates = { columnIndex, rowIndex };
+              if (selectedCell && selectedCell.columnIndex === columnIndex && selectedCell.rowIndex === rowIndex) {
+                // Cell is already selected, editing will be triggered by EditableCell's double-click handler
+              }
+            }}
+          />
+
+          {/* Calendar Picker for date cells */}
+          {calendarPickerCell && (
+            <CalendarPicker
+              ledgerConfig={ledgerConfig}
+              selectedCell={{
+                columnIndex: calendarPickerCell.columnIndex,
+                rowIndex: calendarPickerCell.rowIndex,
+              }}
+              cells={cells}
+              onDateSelect={setCellDate}
+              onClose={closeCalendarPicker}
+              scrollContainerRef={scrollContainerRef}
+            />
+          )}
+
+          {/* Inline text editor for cell editing (double-click or Enter/F2) */}
+          <EditableCell
+            ledgerConfig={ledgerConfig}
+            cells={cells}
+            selectedCell={selectedCell}
+            onCellValueChange={setCellValue}
+            scrollContainerRef={scrollContainerRef}
+            isVisible={!calendarPickerCell}
           />
 
           {/* Cell content overlay - recognized text and failed recognition indicators */}
