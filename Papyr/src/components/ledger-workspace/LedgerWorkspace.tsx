@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { LedgerCanvas } from '@/components/ledger-workspace/LedgerCanvas';
 import { ColumnHeaders } from '@/components/ledger-workspace/ColumnHeaders';
 import { CellHighlights } from '@/components/ledger-workspace/CellHighlights';
@@ -12,6 +12,31 @@ import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
 import type { LedgerPageContent, CellCoordinates, LedgerCellData } from '@/types/ledger';
 import { getLedgerContentDimensions } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
+
+/**
+ * Hook to detect if viewport matches a media query
+ * Returns true when the media query matches (e.g., mobile viewport)
+ * Handles SSR and test environments where window.matchMedia may not exist
+ */
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    // Guard against SSR and test environments
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return;
+    }
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = (event: MediaQueryListEvent) => setMatches(event.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, [matches, query]);
+
+  return matches;
+}
 
 interface LedgerWorkspaceProps {
   bookId: string;
@@ -142,11 +167,26 @@ export function LedgerWorkspace({
   // Compute ledger content dimensions from config
   const contentDimensions = getLedgerContentDimensions(ledgerConfig);
 
+  // Detect mobile viewport (< 768px) for responsive grid
+  const isMobile = useMediaQuery('(max-width: 767px)');
+
   // Register keyboard shortcuts
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Compute grid template columns based on viewport
+  const gridTemplateColumns = isMobile
+    ? ledgerConfig.columns.map((col, index) => {
+        if (index === 0 && ledgerConfig.columns[0].type === 'date') {
+          // Date column: freeze narrow width on mobile
+          return '80px';
+        }
+        // Other columns: scrollable at 120px on mobile
+        return '120px';
+      }).join(' ')
+    : ledgerConfig.columns.map(col => `${col.width}px`).join(' ');
 
   return (
     <div className={`relative w-full h-full ${className}`} role="application" aria-label="Ledger workspace">
@@ -199,18 +239,7 @@ export function LedgerWorkspace({
           <div
             className="grid"
             style={{
-              gridTemplateColumns: ledgerConfig.columns.map((col, index) => {
-                if (index === 0 && ledgerConfig.columns[0].type === 'date') {
-                  // Date column: freeze narrow width on mobile
-                  return '80px';
-                }
-                // Other columns: scrollable (auto width for desktop, 120px for mobile)
-                return '120px';
-              }).join(' ')},
-              // On desktop, keep the original column widths
-              '@media (min-width: 768px)': {
-                gridTemplateColumns: ledgerConfig.columns.map(col => `${col.width}px`).join(' '),
-              },
+              gridTemplateColumns,
             }}
           >
           {/* Canvas layers */}
@@ -297,73 +326,7 @@ export function LedgerWorkspace({
             scrollContainerRef={scrollContainerRef}
             isVisible={!calendarPickerCell}
           />
-
-          {/* Cell content overlay - recognized text and failed recognition indicators */}
-          <CellContent
-            ledgerConfig={ledgerConfig}
-            cells={cells}
-            selectedCell={selectedCell}
-            recognizingCells={recognizingCells}
-          />
-
-          {/* Overlay layers */}
-          <ColumnHeaders
-            columns={ledgerConfig.columns}
-            onColumnEdit={editColumn}
-            onColumnAdd={addColumn}
-            onColumnRemove={removeColumn}
-          />
-
-          <CellHighlights
-            ledgerConfig={ledgerConfig}
-            selectedCell={selectedCell}
-            recognizingCells={recognizingCells}
-            onCellSelect={(coords) => {
-              if (coords) {
-                // Check if this is a date column and open calendar picker
-                const column = ledgerConfig.columns[coords.columnIndex];
-                if (column?.type === 'date') {
-                  openCalendarPicker(coords.columnIndex, coords.rowIndex);
-                } else {
-                  selectCell(coords);
-                }
-              } else {
-                selectCell(null);
-              }
-            }}
-            onCellDoubleClick={(columnIndex, rowIndex) => {
-              // Double-click on any cell (including date columns) starts text editing
-              const coords: CellCoordinates = { columnIndex, rowIndex };
-              if (selectedCell && selectedCell.columnIndex === columnIndex && selectedCell.rowIndex === rowIndex) {
-                // Cell is already selected, editing will be triggered by EditableCell's double-click handler
-              }
-            }}
-          />
-
-          {/* Calendar Picker for date cells */}
-          {calendarPickerCell && (
-            <CalendarPicker
-              ledgerConfig={ledgerConfig}
-              selectedCell={{
-                columnIndex: calendarPickerCell.columnIndex,
-                rowIndex: calendarPickerCell.rowIndex,
-              }}
-              cells={cells}
-              onDateSelect={setCellDate}
-              onClose={closeCalendarPicker}
-              scrollContainerRef={scrollContainerRef}
-            />
-          )}
-
-          {/* Inline text editor for cell editing (double-click or Enter/F2) */}
-          <EditableCell
-            ledgerConfig={ledgerConfig}
-            cells={cells}
-            selectedCell={selectedCell}
-            onCellValueChange={setCellValue}
-            scrollContainerRef={scrollContainerRef}
-            isVisible={!calendarPickerCell}
-          />
+          </div>
         </div>
       </div>
 
