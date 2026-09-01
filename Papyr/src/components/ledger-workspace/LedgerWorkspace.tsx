@@ -8,6 +8,7 @@ import { CellContent } from '@/components/ledger-workspace/CellContent';
 import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
 import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
 import { EditableCell } from '@/components/ledger-workspace/EditableCell';
+import { MobileCellEditor } from '@/components/ledger-workspace/MobileCellEditor';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
 import type { LedgerPageContent, CellCoordinates, LedgerCellData } from '@/types/ledger';
 import { getLedgerContentDimensions } from '@/types/ledger';
@@ -188,6 +189,22 @@ export function LedgerWorkspace({
       }).join(' ')
     : ledgerConfig.columns.map(col => `${col.width}px`).join(' ');
 
+  // Mobile editor state
+  const [mobileEditorCell, setMobileEditorCell] = useState<CellCoordinates | null>(null);
+  const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
+
+  // Handle opening mobile editor on long-press or double-tap on mobile
+  const handleOpenMobileEditor = useCallback((coords: CellCoordinates) => {
+    if (!isMobile) return;
+    setMobileEditorCell(coords);
+    setIsMobileEditorOpen(true);
+  }, [isMobile]);
+
+  const handleCloseMobileEditor = useCallback(() => {
+    setIsMobileEditorOpen(false);
+    setMobileEditorCell(null);
+  }, []);
+
   return (
     <div className={`relative w-full h-full ${className}`} role="application" aria-label="Ledger workspace">
       {/* Responsive Toolbar */}
@@ -288,6 +305,10 @@ export function LedgerWorkspace({
                   openCalendarPicker(coords.columnIndex, coords.rowIndex);
                 } else {
                   selectCell(coords);
+                  // On mobile, also open the mobile editor for the selected cell
+                  if (isMobile) {
+                    handleOpenMobileEditor(coords);
+                  }
                 }
               } else {
                 selectCell(null);
@@ -298,6 +319,10 @@ export function LedgerWorkspace({
               const coords: CellCoordinates = { columnIndex, rowIndex };
               if (selectedCell && selectedCell.columnIndex === columnIndex && selectedCell.rowIndex === rowIndex) {
                 // Cell is already selected, editing will be triggered by EditableCell's double-click handler
+                // On mobile, open the mobile editor
+                if (isMobile) {
+                  handleOpenMobileEditor(coords);
+                }
               }
             }}
           />
@@ -340,6 +365,17 @@ export function LedgerWorkspace({
         {isSaving && 'Saving changes'}
         {selectedCell && `Selected cell: ${ledgerConfig.columns[selectedCell.columnIndex]?.label || `Column ${selectedCell.columnIndex + 1}`}, Row ${selectedCell.rowIndex + 1}`}
       </div>
+
+      {/* Mobile Cell Editor (Bottom Sheet) */}
+      <MobileCellEditor
+        ledgerConfig={ledgerConfig}
+        cells={cells}
+        selectedCell={mobileEditorCell}
+        onCellValueChange={setCellValue}
+        onClose={handleCloseMobileEditor}
+        scrollContainerRef={scrollContainerRef}
+        isOpen={isMobileEditorOpen}
+      />
     </div>
   );
 }

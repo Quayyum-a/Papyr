@@ -15,6 +15,7 @@ export { InkLayer } from './InkLayer';
 export { ColumnHeaders } from './ColumnHeaders';
 export { CellHighlights } from './CellHighlights';
 export { LedgerWorkspace } from './LedgerWorkspace';
+export { MobileCellEditor } from './MobileCellEditor';
 
 export { useLedgerCanvas } from './useLedgerCanvas';
 export { useCellSelection } from './useCellSelection';
