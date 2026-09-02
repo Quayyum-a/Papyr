@@ -9,9 +9,10 @@ import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
 import { LedgerToolbar } from '@/components/ledger-workspace/LedgerToolbar';
 import { EditableCell } from '@/components/ledger-workspace/EditableCell';
 import { MobileCellEditor } from '@/components/ledger-workspace/MobileCellEditor';
+import { CandidateStrip } from '@/components/ledger-workspace/CandidateStrip';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
 import type { LedgerPageContent, CellCoordinates, LedgerCellData } from '@/types/ledger';
-import { getLedgerContentDimensions } from '@/types/ledger';
+import { getLedgerContentDimensions, getCellId } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
 
 /**
@@ -350,6 +351,20 @@ export function LedgerWorkspace({
             onCellValueChange={setCellValue}
             scrollContainerRef={scrollContainerRef}
             isVisible={!calendarPickerCell}
+          />
+
+          {/* Candidate suggestion strip (shows MyScript alternatives below active cell) */}
+          <CandidateStrip
+            ledgerConfig={ledgerConfig}
+            cells={cells}
+            selectedCell={selectedCell}
+            onCandidateSelect={(candidate) => {
+              if (selectedCell) {
+                const cellId = getCellId(selectedCell);
+                setCellValue(cellId, candidate, 'text');
+              }
+            }}
+            scrollContainerRef={scrollContainerRef}
           />
           </div>
         </div>

@@ -58,12 +58,15 @@ export interface CellCoordinates {
 export interface LedgerCellData {
   /** Cell identifier (format: "col-{columnIndex}-row-{rowIndex}") */
   cellId: string;
-  
+
   /** Display value for the cell (recognized text or typed text) */
   value: string;
-  
+
   /** Type of content in the cell */
   content_type: 'empty' | 'text' | 'number' | 'ink';
+
+  /** MyScript recognition candidate alternatives (for predictive suggestions) */
+  candidates?: string[];
 }
 
 /**

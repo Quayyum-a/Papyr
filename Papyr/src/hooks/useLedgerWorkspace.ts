@@ -119,6 +119,19 @@ export function useLedgerWorkspace({
       },
       onRecognitionComplete: (cellId, result) => {
         console.log('[INK] Recognition complete', { cellId, success: result.success, text: result.text, error: result.error });
+
+        // Store candidates from MyScript recognition metadata
+        if (result.success && result.metadata?.candidates && result.metadata.candidates.length > 0) {
+          const candidates = result.metadata.candidates;
+          setCells(prev => ({
+            ...prev,
+            [cellId]: {
+              ...prev[cellId],
+              cellId,
+              candidates,
+            } as LedgerCellData,
+          }));
+        }
       },
       isOnline: () => navigator.onLine,
     });

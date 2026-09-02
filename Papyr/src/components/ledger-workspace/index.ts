@@ -16,6 +16,7 @@ export { ColumnHeaders } from './ColumnHeaders';
 export { CellHighlights } from './CellHighlights';
 export { LedgerWorkspace } from './LedgerWorkspace';
 export { MobileCellEditor } from './MobileCellEditor';
+export { CandidateStrip } from './CandidateStrip';
 
 export { useLedgerCanvas } from './useLedgerCanvas';
 export { useCellSelection } from './useCellSelection';
