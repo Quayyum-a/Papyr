@@ -95,11 +95,6 @@ export function CandidateStrip({
     };
   }, [ledgerConfig, selectedCell, scrollContainerRef]);
 
-  // No candidates or no cell selected - don't render
-  if (!selectedCell || !filteredCandidates.length) {
-    return null;
-  }
-
   const handleCandidateClick = useCallback((candidate: string) => {
     onCandidateSelect(candidate);
   }, [onCandidateSelect]);
@@ -110,6 +105,11 @@ export function CandidateStrip({
       onCandidateSelect(candidate);
     }
   }, [onCandidateSelect]);
+
+  // No candidates or no cell selected - don't render
+  if (!selectedCell || !filteredCandidates.length) {
+    return null;
+  }
 
   return (
     <div

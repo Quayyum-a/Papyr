@@ -208,7 +208,8 @@ export function MobileCellEditor({
 
   // Calendar date selection
   const handleDateSelect = useCallback((cellId: string, date: Date) => {
-    const formatted = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Use local date components to avoid timezone shift (same as useLedgerWorkspace.setCellDate)
+    const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     setEditValue(formatted);
     let contentType: LedgerCellData['content_type'] = 'text';
     if (editColumnType === 'date') contentType = 'text';
@@ -222,9 +223,12 @@ export function MobileCellEditor({
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
-  if (!isOpen || !selectedCell) return null;
-
-  const column = useMemo(() => ledgerConfig.columns[selectedCell.columnIndex], [ledgerConfig, selectedCell]);
+  // Compute column, inputType, isDateColumn, sheetHeight before early return
+  // These must run on every render to satisfy Rules of Hooks
+  const column = useMemo(
+    () => (selectedCell ? ledgerConfig.columns[selectedCell.columnIndex] : null),
+    [ledgerConfig, selectedCell]
+  );
   const inputType = column?.type === 'number' ? 'number' : 'text';
   const isDateColumn = column?.type === 'date';
 
@@ -238,6 +242,8 @@ export function MobileCellEditor({
     ? 'px-3 py-1.5 text-sm rounded-lg transition-colors bg-blue-600 text-white'
     : 'px-3 py-1.5 text-sm rounded-lg transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200';
   const toggleButtonLabel = isDrawingMode ? 'Drawing' : 'Text';
+
+  if (!isOpen || !selectedCell) return null;
 
   // Render content based on state
   const renderContent = () => {
@@ -296,8 +302,10 @@ export function MobileCellEditor({
             <button
               type="button"
               onClick={() => {
-                const today = new Date().toISOString().split('T')[0];
-                setEditValue(today);
+                // Use local date components to avoid timezone shift (same as useLedgerWorkspace.setCellDate)
+                const today = new Date();
+                const formatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                setEditValue(formatted);
               }}
               className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
