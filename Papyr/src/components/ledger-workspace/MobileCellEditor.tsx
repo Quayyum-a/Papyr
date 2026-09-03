@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, type LedgerCellData, getCellId, getCellBounds } from '@/types/ledger';
+import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, type LedgerCellData, getCellId } from '@/types/ledger';
 import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
+import { CandidateStrip } from '@/components/ledger-workspace/CandidateStrip';
+import { StrokeRenderer } from '@/lib/ink-engine/stroke-renderer';
+import { PEN_CONFIGS, type RawPoint, type Stroke, type PenSize } from '@/lib/ink-engine/types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface MobileCellEditorProps {
   ledgerConfig: LedgerConfig;
@@ -12,16 +16,27 @@ interface MobileCellEditorProps {
   onClose: () => void;
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
   isOpen: boolean;
-  onToggleDrawingMode?: () => void;
-  isDrawingMode?: boolean;
 }
 
+interface WhiteboardStroke {
+  id: string;
+  points: RawPoint[];
+  segments: ReturnType<StrokeRenderer['renderStroke']>;
+  createdAt: number;
+}
+
+const DEFAULT_PEN_SIZE: PenSize = 'medium';
+const DEFAULT_PEN_COLOR = '#000000';
+
 /**
- * Mobile bottom sheet editor for cell content
+ * Mobile bottom sheet editor for cell content - Handwriting Whiteboard
  * Features:
- * - Text input for cell editing
- * - Drawing canvas toggle for handwriting
- * - Calendar picker for date columns
+ * - Large canvas for finger/stylus writing (replaces text input)
+ * - Real-time ink capture with premium stroke rendering
+ * - Automatic handwriting recognition via MyScript
+ * - Candidate strip showing recognition alternatives
+ * - Clear action to wipe canvas and start over
+ * - Calendar picker for date columns (unchanged)
  * - Keyboard-avoiding behavior
  * - Swipe-down to dismiss
  * - Backdrop tap to close
@@ -35,11 +50,9 @@ export function MobileCellEditor({
   onClose,
   scrollContainerRef,
   isOpen,
-  onToggleDrawingMode,
-  isDrawingMode = false,
 }: MobileCellEditorProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [editValue, setEditValue] = useState('');
   const [editCellId, setEditCellId] = useState<string | null>(null);
   const [editColumnType, setEditColumnType] = useState<'text' | 'number' | 'date'>('text');
@@ -48,6 +61,18 @@ export function MobileCellEditor({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Whiteboard state
+  const [whiteboardStrokes, setWhiteboardStrokes] = useState<WhiteboardStroke[]>([]);
+  const [currentPoints, setCurrentPoints] = useState<RawPoint[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [candidates, setCandidates] = useState<string[]>([]);
+  const [isRecognizing, setIsRecognizing] = useState(false);
+
+  // Refs for stroke rendering
+  const rendererRef = useRef<StrokeRenderer | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
 
   // Focus trap refs
   const focusableElementsRef = useRef<HTMLElement[]>([]);
@@ -63,15 +88,14 @@ export function MobileCellEditor({
     const handleResize = () => {
       const viewportHeight = window.visualViewport?.height || window.innerHeight;
       const fullHeight = window.visualViewport?.height || window.innerHeight;
-      // Approximate keyboard height when viewport shrinks
       const heightDiff = fullHeight - viewportHeight;
-      setKeyboardHeight(heightDiff > 150 ? heightDiff : 0); // Threshold to avoid false positives
+      setKeyboardHeight(heightDiff > 150 ? heightDiff : 0);
     };
 
     const vv = window.visualViewport;
     if (vv) {
       vv.addEventListener('resize', handleResize);
-      handleResize(); // Initial check
+      handleResize();
       return () => vv.removeEventListener('resize', handleResize);
     }
   }, []);
@@ -89,16 +113,25 @@ export function MobileCellEditor({
       setEditValue(cellData?.value || '');
       setShowCalendar(columnType === 'date');
 
+      // Load existing candidates if any
+      if (cellData?.candidates?.length) {
+        setCandidates(cellData.candidates);
+      }
+
       // Store previous focus for restoration
       previousFocusRef.current = document.activeElement as HTMLElement;
 
-      // Focus input after render
-      setTimeout(() => inputRef.current?.focus(), 100);
+      // Focus first focusable element after render
+      setTimeout(() => firstFocusableRef.current?.focus(), 100);
     } else {
       // Reset state on close
       setEditCellId(null);
       setEditValue('');
       setShowCalendar(false);
+      setWhiteboardStrokes([]);
+      setCurrentPoints([]);
+      setCandidates([]);
+      setIsRecognizing(false);
 
       // Restore focus
       if (previousFocusRef.current) {
@@ -106,6 +139,106 @@ export function MobileCellEditor({
       }
     }
   }, [isOpen, selectedCell, cells, ledgerConfig]);
+
+  // Initialize stroke renderer
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Scale for DPI
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * dpr;
+    canvas.height = canvas.clientHeight * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    rendererRef.current = new StrokeRenderer({
+      color: DEFAULT_PEN_COLOR,
+      ...PEN_CONFIGS[DEFAULT_PEN_SIZE],
+    });
+
+    // Initial render
+    renderCanvas();
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver(() => {
+      if (!canvasRef.current) return;
+      const newCanvas = canvasRef.current;
+      const newCtx = newCanvas.getContext('2d');
+      if (!newCtx || !rendererRef.current) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      newCanvas.width = newCanvas.clientWidth * dpr;
+      newCanvas.height = newCanvas.clientHeight * dpr;
+      newCtx.scale(dpr, dpr);
+      newCtx.imageSmoothingEnabled = true;
+      newCtx.imageSmoothingQuality = 'high';
+      renderCanvas();
+    });
+    resizeObserver.observe(canvas);
+
+    return () => {
+      resizeObserver.disconnect();
+      const frameId = animationFrameRef.current;
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, []);
+
+  // Render canvas function
+  const renderCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const renderer = rendererRef.current;
+    if (!canvas || !renderer) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+
+    // Clear
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw paper-like background (subtle grid or lines)
+    ctx.strokeStyle = '#e8e8e8';
+    ctx.lineWidth = 0.5;
+    const lineSpacing = 24;
+    for (let y = lineSpacing; y < height; y += lineSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // Draw completed strokes
+    for (const stroke of whiteboardStrokes) {
+      ctx.fillStyle = DEFAULT_PEN_COLOR;
+      for (const segment of stroke.segments) {
+        renderer.drawSegment(ctx, segment);
+      }
+    }
+
+    // Draw current stroke (being drawn)
+    if (currentPoints.length > 1) {
+      const tailSegments = renderer.renderStrokeTail(currentPoints);
+      ctx.fillStyle = DEFAULT_PEN_COLOR;
+      for (const segment of tailSegments) {
+        renderer.drawSegment(ctx, segment, 10);
+      }
+    }
+  }, [whiteboardStrokes, currentPoints]);
+
+  // Trigger canvas re-render when strokes change
+  useEffect(() => {
+    renderCanvas();
+  }, [whiteboardStrokes, currentPoints]);
 
   // Focus trap implementation
   const updateFocusableElements = useCallback(() => {
@@ -129,13 +262,11 @@ export function MobileCellEditor({
       if (e.key !== 'Tab') return;
 
       if (e.shiftKey) {
-        // Shift+Tab: move backwards
         if (document.activeElement === firstFocusableRef.current) {
           e.preventDefault();
           lastFocusableRef.current?.focus();
         }
       } else {
-        // Tab: move forwards
         if (document.activeElement === lastFocusableRef.current) {
           e.preventDefault();
           firstFocusableRef.current?.focus();
@@ -143,8 +274,9 @@ export function MobileCellEditor({
       }
     };
 
-    sheetRef.current?.addEventListener('keydown', handleTab);
-    return () => sheetRef.current?.removeEventListener('keydown', handleTab);
+    const sheetEl = sheetRef.current;
+    sheetEl?.addEventListener('keydown', handleTab);
+    return () => sheetEl?.removeEventListener('keydown', handleTab);
   }, [isOpen, updateFocusableElements]);
 
   // Handle swipe down to dismiss
@@ -157,13 +289,13 @@ export function MobileCellEditor({
     if (!isDragging || dragStartY === null) return;
 
     const deltaY = e.touches[0].clientY - dragStartY;
-    if (deltaY > 0) { // Only allow dragging down
+    if (deltaY > 0) {
       setDragOffset(deltaY);
     }
   }, [isDragging, dragStartY]);
 
   const handleTouchEnd = useCallback(() => {
-    if (dragOffset > 100) { // Threshold for dismiss
+    if (dragOffset > 100) {
       onClose();
     }
     setDragStartY(null);
@@ -182,12 +314,8 @@ export function MobileCellEditor({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose();
-    } else if (e.key === 'Enter' && !e.shiftKey && !showCalendar) {
-      // Enter to save (but not in calendar or multiline)
-      e.preventDefault();
-      handleSave();
     }
-  }, [onClose, showCalendar]);
+  }, [onClose]);
 
   const handleSave = useCallback(() => {
     if (!editCellId) return;
@@ -202,13 +330,203 @@ export function MobileCellEditor({
     onClose();
   }, [editCellId, editValue, editColumnType, onCellValueChange, onClose]);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditValue(e.target.value);
+  // Handle canvas pointer events for drawing
+  const handleCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Ignore if another pointer is already active
+    if (activePointerIdRef.current !== null) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+
+    activePointerIdRef.current = e.pointerId;
+    setIsDrawing(true);
+
+    // Try to capture pointer
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore if capture fails
+    }
+
+    const point: RawPoint = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      t: Date.now(),
+      pressure: e.pressure,
+      tiltX: e.tiltX,
+      tiltY: e.tiltY,
+    };
+
+    setCurrentPoints([point]);
   }, []);
 
-  // Calendar date selection
+  const handleCanvasPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+    if (!isDrawing) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+
+    const point: RawPoint = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      t: Date.now(),
+      pressure: e.pressure,
+      tiltX: e.tiltX,
+      tiltY: e.tiltY,
+    };
+
+    setCurrentPoints(prev => [...prev, point]);
+  }, [isDrawing]);
+
+  // Submit stroke to recognition pipeline - must be defined before handleCanvasPointerUp
+  const submitStrokeForRecognition = useCallback(async (stroke: WhiteboardStroke, cellId: string, cellCoords: CellCoordinates) => {
+    if (!cellId) return;
+
+    setIsRecognizing(true);
+
+    // Convert WhiteboardStroke to the format expected by RecognitionService
+    const bounds = {
+      minX: Math.min(...stroke.points.map(p => p.x)),
+      minY: Math.min(...stroke.points.map(p => p.y)),
+      maxX: Math.max(...stroke.points.map(p => p.x)),
+      maxY: Math.max(...stroke.points.map(p => p.y)),
+    };
+
+    const inkStroke: Stroke = {
+      id: stroke.id,
+      tool: 'pen',
+      color: DEFAULT_PEN_COLOR,
+      size: DEFAULT_PEN_SIZE,
+      segments: stroke.segments,
+      createdAt: stroke.createdAt,
+      bounds,
+      cell_id: cellId,
+    };
+
+    // For now, we'll simulate the recognition call
+    // In production, this would go through the RecognitionService
+    // which calls /api/ink/recognize endpoint
+    try {
+      const response = await fetch('/api/ink/recognize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookId: 'default', // Would come from context
+          pageId: 'default', // Would come from context
+          cellId,
+          cellCoords,
+          columnType: editColumnType,
+          columnLabel: ledgerConfig.columns[cellCoords.columnIndex]?.label,
+          strokes: [inkStroke],
+          cellRevision: 1,
+          language: 'en_US',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.recognizedText) {
+          setEditValue(data.recognizedText);
+        }
+        if (data.metadata?.candidates?.length) {
+          setCandidates(data.metadata.candidates);
+        }
+      }
+    } catch (error) {
+      console.error('Recognition failed:', error);
+    } finally {
+      setIsRecognizing(false);
+    }
+  }, [editColumnType, ledgerConfig.columns]);
+
+  const handleCanvasPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+
+    const canvas = canvasRef.current;
+
+    // Release pointer capture
+    try {
+      canvas?.releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore
+    }
+
+    activePointerIdRef.current = null;
+
+    if (!isDrawing || currentPoints.length < 2) {
+      setIsDrawing(false);
+      setCurrentPoints([]);
+      return;
+    }
+
+    // Create stroke from points
+    const renderer = rendererRef.current;
+    if (!renderer) {
+      setIsDrawing(false);
+      setCurrentPoints([]);
+      return;
+    }
+
+    const segments = renderer.renderStroke(currentPoints);
+
+    const bounds = {
+      minX: Math.min(...currentPoints.map(p => p.x)),
+      minY: Math.min(...currentPoints.map(p => p.y)),
+      maxX: Math.max(...currentPoints.map(p => p.x)),
+      maxY: Math.max(...currentPoints.map(p => p.y)),
+    };
+
+    const newStroke: WhiteboardStroke = {
+      id: uuidv4(),
+      points: currentPoints,
+      segments,
+      createdAt: Date.now(),
+    };
+
+    setWhiteboardStrokes(prev => [...prev, newStroke]);
+    setCurrentPoints([]);
+    setIsDrawing(false);
+
+    // Submit stroke for recognition
+    if (editCellId && selectedCell) {
+      submitStrokeForRecognition(newStroke, editCellId, selectedCell);
+    }
+  }, [isDrawing, currentPoints, editCellId, selectedCell, submitStrokeForRecognition]);
+
+  const handleCanvasPointerLeave = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerIdRef.current === e.pointerId && isDrawing) {
+      handleCanvasPointerUp(e);
+    }
+  }, [isDrawing, handleCanvasPointerUp]);
+
+  // Clear canvas and recognition state
+  const handleClear = useCallback(() => {
+    setWhiteboardStrokes([]);
+    setCurrentPoints([]);
+    setEditValue('');
+    setCandidates([]);
+    setIsRecognizing(false);
+
+    // Also clear the cell value if we want to truly reset
+    if (editCellId) {
+      onCellValueChange(editCellId, '', 'text');
+    }
+  }, [editCellId, onCellValueChange]);
+
+  // Handle candidate selection from CandidateStrip
+  const handleCandidateSelect = useCallback((candidate: string) => {
+    setEditValue(candidate);
+  }, []);
+
+  // Handle date selection from calendar
   const handleDateSelect = useCallback((cellId: string, date: Date) => {
-    // Use local date components to avoid timezone shift (same as useLedgerWorkspace.setCellDate)
     const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     setEditValue(formatted);
     let contentType: LedgerCellData['content_type'] = 'text';
@@ -219,17 +537,13 @@ export function MobileCellEditor({
 
   const handleCalendarClose = useCallback(() => {
     setShowCalendar(false);
-    // Focus back to input
-    setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
-  // Compute column, inputType, isDateColumn, sheetHeight before early return
-  // These must run on every render to satisfy Rules of Hooks
+  // Compute column info
   const column = useMemo(
     () => (selectedCell ? ledgerConfig.columns[selectedCell.columnIndex] : null),
     [ledgerConfig, selectedCell]
   );
-  const inputType = column?.type === 'number' ? 'number' : 'text';
   const isDateColumn = column?.type === 'date';
 
   // Sheet height: 50% of viewport on mobile, max 600px on tablet
@@ -237,11 +551,7 @@ export function MobileCellEditor({
     ? `calc(100vh - ${keyboardHeight}px - 20px)`
     : '50vh';
 
-  const headerTitle = isDrawingMode ? 'Handwriting' : `Edit ${column?.label || 'Cell'}`;
-  const toggleButtonClass = isDrawingMode
-    ? 'px-3 py-1.5 text-sm rounded-lg transition-colors bg-blue-600 text-white'
-    : 'px-3 py-1.5 text-sm rounded-lg transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200';
-  const toggleButtonLabel = isDrawingMode ? 'Drawing' : 'Text';
+  const headerTitle = isDateColumn ? `Edit ${column?.label || 'Date'}` : `Handwriting`;
 
   if (!isOpen || !selectedCell) return null;
 
@@ -260,72 +570,86 @@ export function MobileCellEditor({
       );
     }
 
-    if (isDrawingMode) {
+    if (isDateColumn) {
+      // Date columns still show calendar picker as primary, but allow handwriting too
       return (
-        <div className="text-center py-12 text-gray-500">
-          <p className="text-lg font-medium mb-2">Drawing Mode</p>
-          <p className="text-sm">Handwriting canvas will be available in Phase 3</p>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 text-center">
+            Tap calendar or write the date below
+          </p>
           <button
             type="button"
-            onClick={() => onToggleDrawingMode?.()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm"
+            onClick={() => setShowCalendar(true)}
+            className="w-full px-4 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Switch to Text Input
+            Open Calendar
           </button>
+          <WhiteboardCanvas
+            canvasRef={canvasRef}
+            onPointerDown={handleCanvasPointerDown}
+            onPointerMove={handleCanvasPointerMove}
+            onPointerUp={handleCanvasPointerUp}
+            onPointerLeave={handleCanvasPointerLeave}
+            isDrawing={isDrawing}
+            isRecognizing={isRecognizing}
+          />
+          {whiteboardStrokes.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="w-full px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Clear Canvas
+            </button>
+          )}
         </div>
       );
     }
 
+    // Text and number columns: Full whiteboard
     return (
-      <div className="space-y-4">
-        <label htmlFor="mobile-cell-input" className="block text-sm font-medium text-gray-700">
-          {column?.label || 'Cell Value'}
-        </label>
-        <input
-          ref={inputRef}
-          id="mobile-cell-input"
-          type={inputType}
-          value={editValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          inputMode={inputType === 'number' ? 'numeric' : 'text'}
-          autoComplete="off"
-          spellCheck={false}
-          className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
-          placeholder={isDateColumn ? 'YYYY-MM-DD' : 'Enter value...'}
-          aria-label={`Edit ${column?.label || 'cell'} value`}
+      <div className="space-y-4 flex flex-col h-full">
+        <div className="text-center text-sm text-gray-500 mb-2">
+          Write naturally with finger or stylus
+        </div>
+
+        <WhiteboardCanvas
+          canvasRef={canvasRef}
+          onPointerDown={handleCanvasPointerDown}
+          onPointerMove={handleCanvasPointerMove}
+          onPointerUp={handleCanvasPointerUp}
+          onPointerLeave={handleCanvasPointerLeave}
+          isDrawing={isDrawing}
+          isRecognizing={isRecognizing}
         />
 
-        {/* Quick actions for date column */}
-        {isDateColumn && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                // Use local date components to avoid timezone shift (same as useLedgerWorkspace.setCellDate)
-                const today = new Date();
-                const formatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                setEditValue(formatted);
-              }}
-              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditValue('')}
-              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Clear
-            </button>
-          </div>
+        {whiteboardStrokes.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors self-center"
+          >
+            Clear Canvas
+          </button>
+        )}
+
+        {/* Candidate Strip - shows MyScript alternates */}
+        {candidates.length > 0 && (
+          <CandidateStrip
+            ledgerConfig={ledgerConfig}
+            cells={{ [editCellId!]: { cellId: editCellId!, value: editValue, content_type: 'text', candidates } }}
+            selectedCell={selectedCell}
+            onCandidateSelect={handleCandidateSelect}
+            scrollContainerRef={scrollContainerRef}
+            maxCandidates={5}
+          />
         )}
       </div>
     );
   };
 
   const renderActionButtons = () => {
-    if (showCalendar || isDrawingMode) return null;
+    if (showCalendar) return null;
 
     return (
       <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
@@ -339,10 +663,10 @@ export function MobileCellEditor({
         <button
           type="button"
           onClick={handleSave}
-          disabled={editValue.trim() === ''}
+          disabled={editValue.trim() === '' && whiteboardStrokes.length === 0}
           className="flex-1 px-4 py-3 text-base font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Save
+          {isRecognizing ? 'Recognizing...' : 'Save'}
         </button>
       </div>
     );
@@ -370,7 +694,6 @@ export function MobileCellEditor({
           transform: `translateY(${dragOffset}px)`,
           maxHeight: sheetHeight,
           width: '100%',
-          // On tablet/desktop, center and limit width
           maxWidth: '100%',
           margin: '0 auto',
         }}
@@ -388,19 +711,7 @@ export function MobileCellEditor({
         <div className="px-4 mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">{headerTitle}</h2>
           <div className="flex items-center gap-2">
-            {/* Drawing mode toggle */}
-            {onToggleDrawingMode && (
-              <button
-                type="button"
-                onClick={onToggleDrawingMode}
-                className={toggleButtonClass}
-                aria-pressed={isDrawingMode}
-              >
-                {toggleButtonLabel}
-              </button>
-            )}
-            {/* Calendar button for date columns */}
-            {isDateColumn && !showCalendar && !isDrawingMode && (
+            {isDateColumn && !showCalendar && (
               <button
                 type="button"
                 onClick={() => setShowCalendar(true)}
@@ -418,6 +729,54 @@ export function MobileCellEditor({
           {renderActionButtons()}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Separate canvas component to avoid re-render issues
+interface WhiteboardCanvasProps {
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+  onPointerDown: (e: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerMove: (e: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerUp: (e: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerLeave: (e: React.PointerEvent<HTMLCanvasElement>) => void;
+  isDrawing: boolean;
+  isRecognizing: boolean;
+}
+
+function WhiteboardCanvas({
+  canvasRef,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerLeave,
+  isDrawing,
+  isRecognizing,
+}: WhiteboardCanvasProps) {
+  return (
+    <div className="relative w-full" style={{ flex: 1, minHeight: 200, maxHeight: 400 }}>
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full bg-white border-2 border-gray-200 rounded-lg touch-none cursor-crosshair"
+        style={{
+          minHeight: 200,
+          maxHeight: 400,
+          height: '100%',
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        onPointerCancel={onPointerLeave}
+      />
+      {isRecognizing && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-white/80 rounded-lg">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-sm text-gray-600">Recognizing...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
