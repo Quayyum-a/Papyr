@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, type LedgerCellData, getCellId } from '@/types/ledger';
 import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
-import { CandidateStrip } from '@/components/ledger-workspace/CandidateStrip';
 import { StrokeRenderer } from '@/lib/ink-engine/stroke-renderer';
 import { PEN_CONFIGS, type RawPoint, type Stroke, type PenSize } from '@/lib/ink-engine/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -69,6 +68,9 @@ export function MobileCellEditor({
   const [candidates, setCandidates] = useState<string[]>([]);
   const [isRecognizing, setIsRecognizing] = useState(false);
 
+  // Recognition debounce timer ref
+  const recognitionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Refs for stroke rendering
   const rendererRef = useRef<StrokeRenderer | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -132,6 +134,12 @@ export function MobileCellEditor({
       setCurrentPoints([]);
       setCandidates([]);
       setIsRecognizing(false);
+
+      // Clear any pending recognition timer
+      if (recognitionTimerRef.current) {
+        clearTimeout(recognitionTimerRef.current);
+        recognitionTimerRef.current = null;
+      }
 
       // Restore focus
       if (previousFocusRef.current) {
@@ -383,34 +391,34 @@ export function MobileCellEditor({
     setCurrentPoints(prev => [...prev, point]);
   }, [isDrawing]);
 
-  // Submit stroke to recognition pipeline - must be defined before handleCanvasPointerUp
-  const submitStrokeForRecognition = useCallback(async (stroke: WhiteboardStroke, cellId: string, cellCoords: CellCoordinates) => {
-    if (!cellId) return;
+  // Submit ALL strokes for recognition (full session accumulation with debounce)
+  const submitAllStrokesForRecognition = useCallback(async (allStrokes: WhiteboardStroke[], cellId: string, cellCoords: CellCoordinates) => {
+    if (!cellId || allStrokes.length === 0) return;
 
     setIsRecognizing(true);
 
-    // Convert WhiteboardStroke to the format expected by RecognitionService
-    const bounds = {
-      minX: Math.min(...stroke.points.map(p => p.x)),
-      minY: Math.min(...stroke.points.map(p => p.y)),
-      maxX: Math.max(...stroke.points.map(p => p.x)),
-      maxY: Math.max(...stroke.points.map(p => p.y)),
-    };
+    // Convert all WhiteboardStrokes to the format expected by RecognitionService
+    const inkStrokes: Stroke[] = allStrokes.map(stroke => {
+      const bounds = {
+        minX: Math.min(...stroke.points.map(p => p.x)),
+        minY: Math.min(...stroke.points.map(p => p.y)),
+        maxX: Math.max(...stroke.points.map(p => p.x)),
+        maxY: Math.max(...stroke.points.map(p => p.y)),
+      };
 
-    const inkStroke: Stroke = {
-      id: stroke.id,
-      tool: 'pen',
-      color: DEFAULT_PEN_COLOR,
-      size: DEFAULT_PEN_SIZE,
-      segments: stroke.segments,
-      createdAt: stroke.createdAt,
-      bounds,
-      cell_id: cellId,
-    };
+      return {
+        id: stroke.id,
+        tool: 'pen' as const,
+        color: DEFAULT_PEN_COLOR,
+        size: DEFAULT_PEN_SIZE,
+        segments: stroke.segments,
+        createdAt: stroke.createdAt,
+        bounds,
+        cell_id: cellId,
+      };
+    });
 
-    // For now, we'll simulate the recognition call
-    // In production, this would go through the RecognitionService
-    // which calls /api/ink/recognize endpoint
+    // Use the same approach as desktop: send all strokes together as a session
     try {
       const response = await fetch('/api/ink/recognize', {
         method: 'POST',
@@ -424,7 +432,7 @@ export function MobileCellEditor({
           cellCoords,
           columnType: editColumnType,
           columnLabel: ledgerConfig.columns[cellCoords.columnIndex]?.label,
-          strokes: [inkStroke],
+          strokes: inkStrokes,
           cellRevision: 1,
           language: 'en_US',
         }),
@@ -490,15 +498,28 @@ export function MobileCellEditor({
       createdAt: Date.now(),
     };
 
-    setWhiteboardStrokes(prev => [...prev, newStroke]);
+    // Add new stroke to the session
+    setWhiteboardStrokes(prev => {
+      const updated = [...prev, newStroke];
+
+      // Debounce recognition: wait ~300ms after last stroke before recognizing
+      // This avoids hammering the API while user is still writing a word
+      if (recognitionTimerRef.current) {
+        clearTimeout(recognitionTimerRef.current);
+      }
+
+      if (editCellId && selectedCell) {
+        recognitionTimerRef.current = setTimeout(() => {
+          submitAllStrokesForRecognition(updated, editCellId, selectedCell);
+        }, 300);
+      }
+
+      return updated;
+    });
+
     setCurrentPoints([]);
     setIsDrawing(false);
-
-    // Submit stroke for recognition
-    if (editCellId && selectedCell) {
-      submitStrokeForRecognition(newStroke, editCellId, selectedCell);
-    }
-  }, [isDrawing, currentPoints, editCellId, selectedCell, submitStrokeForRecognition]);
+  }, [isDrawing, currentPoints, editCellId, selectedCell, submitAllStrokesForRecognition]);
 
   const handleCanvasPointerLeave = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (activePointerIdRef.current === e.pointerId && isDrawing) {
@@ -573,10 +594,7 @@ export function MobileCellEditor({
     if (isDateColumn) {
       // Date columns still show calendar picker as primary, but allow handwriting too
       return (
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600 text-center">
-            Tap calendar or write the date below
-          </p>
+        <div className="space-y-4 flex flex-col h-full">
           <button
             type="button"
             onClick={() => setShowCalendar(true)}
@@ -609,10 +627,6 @@ export function MobileCellEditor({
     // Text and number columns: Full whiteboard
     return (
       <div className="space-y-4 flex flex-col h-full">
-        <div className="text-center text-sm text-gray-500 mb-2">
-          Write naturally with finger or stylus
-        </div>
-
         <WhiteboardCanvas
           canvasRef={canvasRef}
           onPointerDown={handleCanvasPointerDown}
@@ -631,18 +645,6 @@ export function MobileCellEditor({
           >
             Clear Canvas
           </button>
-        )}
-
-        {/* Candidate Strip - shows MyScript alternates */}
-        {candidates.length > 0 && (
-          <CandidateStrip
-            ledgerConfig={ledgerConfig}
-            cells={{ [editCellId!]: { cellId: editCellId!, value: editValue, content_type: 'text', candidates } }}
-            selectedCell={selectedCell}
-            onCandidateSelect={handleCandidateSelect}
-            scrollContainerRef={scrollContainerRef}
-            maxCandidates={5}
-          />
         )}
       </div>
     );
@@ -723,8 +725,29 @@ export function MobileCellEditor({
           </div>
         </div>
 
+        {/* Candidate Strip - shows MyScript alternates at top as horizontal scrollable row */}
+        {candidates.length > 0 && (
+          <div className="px-4 mb-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" role="listbox" aria-label="Recognition alternatives">
+              {candidates.map((candidate, index) => (
+                <button
+                  key={`${candidate}-${index}`}
+                  type="button"
+                  onClick={() => handleCandidateSelect(candidate)}
+                  className="flex-shrink-0 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  role="option"
+                  aria-selected="false"
+                  tabIndex={0}
+                >
+                  {candidate}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Content */}
-        <div className="px-4 pb-4 overflow-y-auto" style={{ maxHeight: `calc(${sheetHeight} - 120px)` } as React.CSSProperties}>
+        <div className="px-4 pb-4 flex flex-col" style={{ maxHeight: `calc(${sheetHeight} - 120px)`, minHeight: 0 } as React.CSSProperties}>
           {renderContent()}
           {renderActionButtons()}
         </div>
@@ -754,13 +777,12 @@ function WhiteboardCanvas({
   isRecognizing,
 }: WhiteboardCanvasProps) {
   return (
-    <div className="relative w-full" style={{ flex: 1, minHeight: 200, maxHeight: 400 }}>
+    <div className="relative w-full" style={{ flex: 1, minHeight: 0 }}>
       <canvas
         ref={canvasRef}
         className="w-full h-full bg-white border-2 border-gray-200 rounded-lg touch-none cursor-crosshair"
         style={{
           minHeight: 200,
-          maxHeight: 400,
           height: '100%',
         }}
         onPointerDown={onPointerDown}
