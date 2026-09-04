@@ -551,7 +551,7 @@ export function MobileCellEditor({
     ? `calc(100vh - ${keyboardHeight}px - 20px)`
     : '50vh';
 
-  const headerTitle = isDateColumn ? `Edit ${column?.label || 'Date'}` : `Handwriting`;
+  const headerTitle = `Edit ${column?.label || 'Cell'}`;
 
   if (!isOpen || !selectedCell) return null;
 
@@ -697,14 +697,14 @@ export function MobileCellEditor({
           maxWidth: '100%',
           margin: '0 auto',
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
-        {/* Drag handle */}
+        {/* Drag handle - swipe down from here to dismiss */}
         <div
-          className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-4 touch-none"
+          className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-4"
           aria-hidden="true"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         />
 
         {/* Header */}
