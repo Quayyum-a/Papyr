@@ -43,13 +43,23 @@ export default function BookLedgerPage() {
       setLoading(true);
       setError(null);
 
-      // Load book
-      const { data: bookData, error: bookError } = await supabase
-        .from('books')
-        .select('*')
-        .eq('id', bookId)
-        .eq('user_id', user?.id)
-        .single();
+      // Load book and pages in parallel (neither depends on the other's result)
+      const [bookResult, pagesResult] = await Promise.all([
+        supabase
+          .from('books')
+          .select('*')
+          .eq('id', bookId)
+          .eq('user_id', user?.id)
+          .single(),
+        supabase
+          .from('pages')
+          .select('*')
+          .eq('book_id', bookId)
+          .order('position', { ascending: true }),
+      ]);
+
+      const { data: bookData, error: bookError } = bookResult;
+      const { data: pagesData, error: pageError } = pagesResult;
 
       if (bookError) throw bookError;
       if (!bookData) {
@@ -58,13 +68,6 @@ export default function BookLedgerPage() {
       }
 
       setBook(bookData);
-
-      // Load or create first page
-      const { data: pagesData, error: pageError } = await supabase
-        .from('pages')
-        .select('*')
-        .eq('book_id', bookId)
-        .order('position', { ascending: true });
 
       if (pageError) throw pageError;
 
