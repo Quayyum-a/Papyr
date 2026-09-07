@@ -567,10 +567,11 @@ export function MobileCellEditor({
   );
   const isDateColumn = column?.type === 'date';
 
-  // Sheet height: 50% of viewport on mobile, max 600px on tablet
+  // Sheet height: 90% of viewport when no keyboard (handwriting whiteboard needs room),
+  // keyboard-aware calc when keyboard is present (for future keyboard-involving flows)
   const sheetHeight = keyboardHeight > 0
     ? `calc(100vh - ${keyboardHeight}px - 20px)`
-    : '50vh';
+    : '90vh';
 
   const headerTitle = `Edit ${column?.label || 'Cell'}`;
 
