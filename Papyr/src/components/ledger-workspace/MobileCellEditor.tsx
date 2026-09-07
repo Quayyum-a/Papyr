@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { LEDGER_CONSTANTS, type LedgerConfig, type CellCoordinates, type LedgerCellData, getCellId } from '@/types/ledger';
 import { CalendarPicker } from '@/components/ledger-workspace/CalendarPicker';
 import { StrokeRenderer } from '@/lib/ink-engine/stroke-renderer';
@@ -675,16 +676,16 @@ export function MobileCellEditor({
     );
   };
 
-  return (
+  const modalContent = (
     <div
       className="fixed inset-0 z-50"
       role="dialog"
       aria-modal="true"
       aria-label={`Edit ${column?.label || 'cell'}`}
     >
-      {/* Backdrop */}
+      {/* Backdrop - lighter opacity, no blur filter */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/30"
         onClick={handleBackdropClick}
         aria-hidden="true"
       />
@@ -755,6 +756,9 @@ export function MobileCellEditor({
       </div>
     </div>
   );
+
+  // Portal the entire modal to document.body so fixed inset-0 covers the true viewport
+  return createPortal(modalContent, document.body);
 }
 
 // Separate canvas component to avoid re-render issues
