@@ -332,17 +332,47 @@ export function getExpandedCellBounds(
 }
 
 /**
+ * Get effective column widths for the current viewport
+ * Single source of truth for column widths used by both CSS grid and canvas drawing
+ *
+ * @param ledgerConfig - The ledger configuration with columns
+ * @param isMobile - Whether the viewport is mobile (< 768px)
+ * @returns Array of column widths in pixels, in position order
+ */
+export function getEffectiveColumnWidths(
+  ledgerConfig: LedgerConfig,
+  isMobile: boolean
+): number[] {
+  const sortedColumns = [...ledgerConfig.columns].sort((a, b) => a.position - b.position);
+
+  if (!isMobile) {
+    // Desktop: use configured widths
+    return sortedColumns.map(col => col.width);
+  }
+
+  // Mobile: Date column (first, position 0) frozen at 80px, others at 120px
+  return sortedColumns.map((col, index) => {
+    if (index === 0 && col.type === 'date') {
+      return 80; // Frozen narrow date column
+    }
+    return 120; // Other columns scrollable at 120px
+  });
+}
+
+/**
  * Compute the total content dimensions of the ledger
  * This gives the exact size the ledger content should be, derived entirely from config
  *
  * @param ledgerConfig - The ledger configuration with columns and row count
+ * @param isMobile - Whether the viewport is mobile (affects column widths)
  * @returns Object with total width and height in pixels
  */
 export function getLedgerContentDimensions(
-  ledgerConfig: LedgerConfig
+  ledgerConfig: LedgerConfig,
+  isMobile: boolean = false
 ): { width: number; height: number } {
-  // Total width = sum of all column widths
-  const totalWidth = ledgerConfig.columns.reduce((sum, col) => sum + col.width, 0);
+  // Total width = sum of effective column widths
+  const totalWidth = getEffectiveColumnWidths(ledgerConfig, isMobile).reduce((sum, w) => sum + w, 0);
 
   // Total height = header height + (row count * row height)
   const totalHeight = LEDGER_CONSTANTS.HEADER_HEIGHT + ledgerConfig.rowCount * LEDGER_CONSTANTS.ROW_HEIGHT;

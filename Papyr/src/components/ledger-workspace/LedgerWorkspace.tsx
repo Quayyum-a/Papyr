@@ -12,7 +12,7 @@ import { MobileCellEditor } from '@/components/ledger-workspace/MobileCellEditor
 import { CandidateStrip } from '@/components/ledger-workspace/CandidateStrip';
 import { useLedgerWorkspace } from '@/hooks/useLedgerWorkspace';
 import type { LedgerPageContent, CellCoordinates, LedgerCellData } from '@/types/ledger';
-import { getLedgerContentDimensions, getCellId } from '@/types/ledger';
+import { getLedgerContentDimensions, getEffectiveColumnWidths, getCellId } from '@/types/ledger';
 import { supabase } from '@/lib/supabase/client';
 
 /**
@@ -166,29 +166,22 @@ export function LedgerWorkspace({
     // Delete/Backspace: Clear selected cell (handled by CellHighlights)
   }, [canUndo, canRedo, undo, redo, selectedCell, clearSelection]);
 
-  // Compute ledger content dimensions from config
-  const contentDimensions = getLedgerContentDimensions(ledgerConfig);
-
   // Detect mobile viewport (< 768px) for responsive grid
   const isMobile = useMediaQuery('(max-width: 767px)');
+
+  // Compute ledger content dimensions from config (single source of truth for column widths)
+  const contentDimensions = getLedgerContentDimensions(ledgerConfig, isMobile);
+
+  // Compute grid template columns using shared function
+  const gridTemplateColumns = getEffectiveColumnWidths(ledgerConfig, isMobile)
+    .map(w => `${w}px`)
+    .join(' ');
 
   // Register keyboard shortcuts
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
-
-  // Compute grid template columns based on viewport
-  const gridTemplateColumns = isMobile
-    ? ledgerConfig.columns.map((col, index) => {
-        if (index === 0 && ledgerConfig.columns[0].type === 'date') {
-          // Date column: freeze narrow width on mobile
-          return '80px';
-        }
-        // Other columns: scrollable at 120px on mobile
-        return '120px';
-      }).join(' ')
-    : ledgerConfig.columns.map(col => `${col.width}px`).join(' ');
 
   // Mobile editor state
   const [mobileEditorCell, setMobileEditorCell] = useState<CellCoordinates | null>(null);
@@ -276,6 +269,7 @@ export function LedgerWorkspace({
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerLeave}
             cells={cells}
+            isMobile={isMobile}
           />
 
           {/* Cell content overlay - recognized text and failed recognition indicators */}

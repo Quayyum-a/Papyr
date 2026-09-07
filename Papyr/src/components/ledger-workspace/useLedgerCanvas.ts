@@ -12,7 +12,7 @@ import { getLedgerContentDimensions } from '@/types/ledger';
  * - Z-index 2: Ink strokes
  * - Z-index 3+: HTML overlays (CellHighlights at z-index 3, CellContent at z-index 4)
  */
-export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
+export function useLedgerCanvas(ledgerConfig: LedgerConfig, isMobile: boolean = false) {
   const paperCanvasRef = useRef<HTMLCanvasElement>(null);
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -26,7 +26,7 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   const [renderKey, setRenderKey] = useState(0); // Force re-render of layers
 
   // Compute expected dimensions from ledger config (available immediately)
-  const expectedDimensions = getLedgerContentDimensions(ledgerConfig);
+  const expectedDimensions = getLedgerContentDimensions(ledgerConfig, isMobile);
 
   // Memoize setupCanvases to avoid recreating on every render
   const setupCanvases = useCallback(() => {
@@ -140,11 +140,12 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig) {
   }, [setupCanvases]);
 
   // Also attempt setup when ledgerConfig changes (e.g., columns added/removed)
+  // or when isMobile changes (mobile vs desktop column widths)
   useEffect(() => {
     if (isReady) {
       setupCanvases();
     }
-  }, [ledgerConfig.columns.length, ledgerConfig.rowCount, isReady, setupCanvases]);
+  }, [ledgerConfig.columns.length, ledgerConfig.rowCount, isMobile, isReady, setupCanvases]);
 
   return {
     paperCanvasRef,

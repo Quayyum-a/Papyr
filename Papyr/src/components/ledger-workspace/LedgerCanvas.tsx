@@ -25,6 +25,8 @@ interface LedgerCanvasProps {
   className?: string;
   // Cell data for rendering recognized content and skipping recognized strokes
   cells?: Record<string, import('@/types/ledger').LedgerCellData>;
+  // Mobile viewport flag for responsive column widths
+  isMobile?: boolean;
 }
 
 /**
@@ -53,6 +55,7 @@ export function LedgerCanvas({
   onPointerLeave,
   className = '',
   cells = {},
+  isMobile = false,
 }: LedgerCanvasProps) {
   const {
     paperCanvasRef,
@@ -64,7 +67,7 @@ export function LedgerCanvas({
     canvasSize,
     isReady,
     renderKey,
-  } = useLedgerCanvas(ledgerConfig);
+  } = useLedgerCanvas(ledgerConfig, isMobile);
 
   // Sync internal ref with external ref if provided
   useEffect(() => {
@@ -141,6 +144,7 @@ export function LedgerCanvas({
             width={canvasSize.width}
             height={canvasSize.height}
             ledgerConfig={ledgerConfig}
+            isMobile={isMobile}
           />
           <InkLayer
             key={`ink-${renderKey}`}

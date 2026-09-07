@@ -1,20 +1,21 @@
 import { useEffect } from 'react';
-import { LEDGER_CONSTANTS, type LedgerConfig } from '@/types/ledger';
+import { LEDGER_CONSTANTS, type LedgerConfig, getEffectiveColumnWidths } from '@/types/ledger';
 
 interface GridLayerProps {
   ctx: CanvasRenderingContext2D | null;
   width: number;
   height: number;
   ledgerConfig: LedgerConfig;
+  isMobile?: boolean;
 }
 
 /**
  * Renders the ledger grid lines (rows and columns)
  * Creates the traditional ledger book appearance
  */
-export function GridLayer({ ctx, width, height, ledgerConfig }: GridLayerProps) {
+export function GridLayer({ ctx, width, height, ledgerConfig, isMobile }: GridLayerProps) {
   useEffect(() => {
-    console.log('GridLayer render:', { ctx: !!ctx, width, height, columns: ledgerConfig.columns.length });
+    console.log('GridLayer render:', { ctx: !!ctx, width, height, columns: ledgerConfig.columns.length, isMobile });
     if (!ctx || width === 0 || height === 0) {
       console.warn('GridLayer: Invalid context or dimensions');
       return;
@@ -27,10 +28,10 @@ export function GridLayer({ ctx, width, height, ledgerConfig }: GridLayerProps) 
     drawRowLines(ctx, width, height, ledgerConfig.rowCount);
 
     // Draw vertical column dividers
-    drawColumnLines(ctx, height, ledgerConfig);
-    
+    drawColumnLines(ctx, height, ledgerConfig, isMobile);
+
     console.log('GridLayer: Rendered successfully');
-  }, [ctx, width, height, ledgerConfig]);
+  }, [ctx, width, height, ledgerConfig, isMobile]);
 
   return null; // This component only renders to canvas, no DOM output
 }
@@ -72,21 +73,20 @@ function drawRowLines(
 function drawColumnLines(
   ctx: CanvasRenderingContext2D,
   height: number,
-  ledgerConfig: LedgerConfig
+  ledgerConfig: LedgerConfig,
+  isMobile?: boolean
 ) {
   ctx.strokeStyle = LEDGER_CONSTANTS.COLUMN_LINE_COLOR;
   ctx.lineWidth = 1;
 
   let xOffset = 0;
 
-  // Sort columns by position to ensure correct order
-  const sortedColumns = [...ledgerConfig.columns].sort(
-    (a, b) => a.position - b.position
-  );
+  // Use shared function for effective column widths (single source of truth)
+  const columnWidths = getEffectiveColumnWidths(ledgerConfig, isMobile ?? false);
 
   // Draw vertical line after each column
-  for (const column of sortedColumns) {
-    xOffset += column.width;
+  for (const width of columnWidths) {
+    xOffset += width;
 
     ctx.beginPath();
     ctx.moveTo(xOffset, 0);
