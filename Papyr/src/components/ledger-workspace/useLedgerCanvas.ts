@@ -139,13 +139,14 @@ export function useLedgerCanvas(ledgerConfig: LedgerConfig, isMobile: boolean = 
     };
   }, [setupCanvases]);
 
-  // Also attempt setup when ledgerConfig changes (e.g., columns added/removed)
-  // or when isMobile changes (mobile vs desktop column widths)
+  // Re-run setup only for real ledger layout changes.
+  // The viewport mode itself should not reinitialize desktop canvases after the
+  // initial stable desktop sizing is established.
   useEffect(() => {
     if (isReady) {
       setupCanvases();
     }
-  }, [ledgerConfig.columns.length, ledgerConfig.rowCount, isMobile, isReady, setupCanvases]);
+  }, [ledgerConfig.columns.length, ledgerConfig.rowCount, isReady, setupCanvases]);
 
   return {
     paperCanvasRef,

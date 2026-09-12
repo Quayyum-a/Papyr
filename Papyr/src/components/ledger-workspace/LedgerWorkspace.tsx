@@ -28,14 +28,17 @@ function useMediaQuery(query: string): boolean {
     if (typeof window === 'undefined' || !window.matchMedia) {
       return;
     }
+
     const media = window.matchMedia(query);
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
+    const updateMatches = () => setMatches(media.matches);
+
+    updateMatches();
+
     const listener = (event: MediaQueryListEvent) => setMatches(event.matches);
     media.addEventListener('change', listener);
+
     return () => media.removeEventListener('change', listener);
-  }, [matches, query]);
+  }, [query]);
 
   return matches;
 }
